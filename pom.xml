@@ -26,6 +26,16 @@
 		<tag>HEAD</tag>
 	</scm>
 
+	<!-- Your existing config -->
+
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/DenissLarka/druvu-lib-loader/</url>
+		</repository>
+	</distributionManagement>
+
 	<dependencies>
 
 		<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
