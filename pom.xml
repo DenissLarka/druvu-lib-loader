@@ -26,8 +26,6 @@
 		<tag>HEAD</tag>
 	</scm>
 
-	<!-- Your existing config -->
-
 	<distributionManagement>
 		<repository>
 			<id>github</id>
@@ -60,6 +58,7 @@
 		<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 		<!-- TEST -->
 		<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+		<!-- testng -->
 		<dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
@@ -72,11 +71,14 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<!-- assertj-core -->
 		<dependency>
 			<groupId>org.assertj</groupId>
 			<artifactId>assertj-core</artifactId>
 			<version>${assertj.version}</version>
+			<scope>test</scope>
 		</dependency>
+		<!-- slf4j-simple -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
@@ -88,7 +90,7 @@
 
 	<build>
 		<plugins>
-
+			<!-- maven-compiler-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -113,16 +115,23 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
-
+			<!-- maven-surefire-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>${maven-surefire-plugin.version}</version>
 				<configuration>
+					<!-- Enable preview features -->
 					<argLine>--enable-preview</argLine>
+					<!--
+					  Run tests on classpath instead of module-path.
+					  This is simpler for testing and allows ServiceLoader to find test implementations.
+					  The module-info.java is still validated during compilation.
+					-->
+					<useModulePath>false</useModulePath>
 				</configuration>
 			</plugin>
-
+			<!-- maven-source-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
@@ -137,7 +146,7 @@
 					</execution>
 				</executions>
 			</plugin>
-
+			<!-- maven-javadoc-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
@@ -158,11 +167,7 @@
 					<additionalOptions>--enable-preview</additionalOptions>
 				</configuration>
 			</plugin>
-
-
-			<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-			<!-- STYLE CHECK -->
-			<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+			<!-- spotbugs-maven-plugin -->
 			<plugin>
 				<groupId>com.github.spotbugs</groupId>
 				<artifactId>spotbugs-maven-plugin</artifactId>
@@ -190,7 +195,7 @@
 					</execution>
 				</executions>
 			</plugin>
-
+			<!-- maven-pmd-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-pmd-plugin</artifactId>
@@ -218,7 +223,7 @@
 					</execution>
 				</executions>
 			</plugin>
-
+			<!-- maven-checkstyle-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
@@ -227,7 +232,7 @@
 					<configLocation>google_checks.xml</configLocation>
 				</configuration>
 			</plugin>
-
+			<!-- maven-enforcer-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-enforcer-plugin</artifactId>
