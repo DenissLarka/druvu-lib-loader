@@ -1,0 +1,54 @@
+package com.druvu.lib.loader;
+
+import com.druvu.lib.loader.ComponentLoader;
+import com.druvu.lib.loader.Dependencies;
+import com.druvu.lib.loader.TargetClassNotFoundException;
+import org.testng.annotations.Test;
+
+public class ComponentLoaderTest {
+
+	@Test(expectedExceptions = NullPointerException.class)
+	public void testCreate_WithNullTargetClass_ThrowsNullPointerException() {
+		Dependencies dependencies = createDefaultDependencies();
+		ComponentLoader.create(null, dependencies);
+	}
+
+	@Test(expectedExceptions = NullPointerException.class)
+	public void testCreate_WithNullDependencies_ThrowsNullPointerException() {
+		ComponentLoader.create(String.class, null);
+	}
+
+	@Test(expectedExceptions = TargetClassNotFoundException.class)
+	public void testCreate_WhenFactoryCreatesNull_ThrowsIllegalStateException() {
+		Dependencies dependencies = createDefaultDependencies();
+		ComponentLoader.create(FakeComponent.class, dependencies);
+	}
+
+	@Test(expectedExceptions = TargetClassNotFoundException.class)
+	public void testCreate_WhenFactoryNotFound_ThrowsTargetClassNotFoundException() {
+		Dependencies dependencies = createDefaultDependencies();
+		ComponentLoader.create(Integer.class, dependencies);
+	}
+
+	private Dependencies createDefaultDependencies() {
+		// Create default Dependencies object
+		return new Dependencies();
+	}
+
+	private static class FakeComponent {
+		// Dummy class for negative test cases
+	}
+
+	private static class ServiceLoaderExtendedStub implements ComponentFactory {
+		@Override
+		public Class<?> getComponentType() {
+			return FakeComponent.class;
+		}
+
+		@Override
+		public Object createComponent(Dependencies dependencies) {
+			return null; // Simulate an invalid factory
+		}
+	}
+
+}
