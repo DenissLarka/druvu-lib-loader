@@ -6,6 +6,51 @@
 mechanism.
 It enables dependency injection and singleton management through factories. Suitable for use in JPMS applications.
 
+## Usage
+
+### 1. Add Repository and Dependency to `pom.xml`
+
+```xml
+<repositories>
+    <repository>
+        <id>github</id>
+        <url>https://maven.pkg.github.com/DenissLarka/druvu-lib-loader</url>
+    </repository>
+</repositories>
+
+<dependencies>
+    <dependency>
+        <groupId>com.druvu</groupId>
+        <artifactId>druvu-lib-loader</artifactId>
+        <version>1.0.1</version>
+    </dependency>
+</dependencies>
+```
+
+### 2. Create a GitHub Personal Access Token
+
+1. Go to https://github.com/settings/tokens
+2. Generate a new token (classic)
+3. Select scope: **`read:packages`**
+4. Copy the token and use it as a password in settings.xml
+
+### 3. Configure Authentication in `~/.m2/settings.xml`
+
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>github</id>
+            <!-- Replace it with your GitHub username -->
+            <username>YOUR_GITHUB_USERNAME</username>
+            <!-- Replace it with your GitHub token (created in step 2) -->
+            <password>YOUR_GITHUB_TOKEN</password>
+        </server>
+    </servers>
+</settings>
+```
+
+
 
 ## Architecture
 
