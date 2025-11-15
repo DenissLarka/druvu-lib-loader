@@ -1,1 +1,4 @@
 com.druvu.lib.loader.MySingletonFactory
+com.druvu.lib.loader.TestPluginFactoryA
+com.druvu.lib.loader.TestPluginFactoryB
+com.druvu.lib.loader.TestPluginFactoryC

@@ -60,8 +60,8 @@ The library implements a two-tier component loading pattern:
 
 1. **ServiceLoaderExtended** (`ServiceLoaderExtended.java`)
     - Wraps Java's ServiceLoader with predicate-based filtering
-    - Enforces a single implementation constraint (throws exception if multiple candidates are found)
-    - Used internally by both ComponentLoader and SingletonLoader
+    - Two modes: `create()` enforces single implementation (fails if multiple found), `createAll()` returns all matching candidates
+    - Used internally by ComponentLoader, MultiComponentLoader, and SingletonLoader
 
 2. **ComponentFactory Interface** (`ComponentFactory.java`)
     - Factory pattern for creating components
@@ -71,23 +71,48 @@ The library implements a two-tier component loading pattern:
 ### Component Creation Patterns
 
 3. **ComponentLoader** (`ComponentLoader.java`)
-    - Main entry point for creating components
+    - Entry point for creating **single** component instances
     - Uses ServiceLoader to find appropriate ComponentFactory
+    - **Enforces single implementation**: Throws exception if multiple factories for the same component type exist
     - Thread-safe (synchronized on target class)
     - Methods: `create(Class<T>)`, `create(Class<T>, Dependencies)`, `dispose(Class<T>, T)`
 
-4. **SingletonLoader** (`SingletonLoader.java`)
+4. **MultiComponentLoader** (`MultiComponentLoader.java`)
+    - Entry point for loading **multiple** component instances (e.g., plugin systems)
+    - Uses ServiceLoader to find **all** matching ComponentFactory implementations
+    - Returns empty list if no factories found (does not throw exception)
+    - Thread-safe (synchronized on target class)
+    - Methods: `loadAll(Class<T>)`, `loadAll(Class<T>, Dependencies)`, `disposeAll(Class<T>, List<T>)`
+
+5. **SingletonLoader** (`SingletonLoader.java`)
     - Wraps ComponentLoader with singleton semantics
     - Maintains global singleton registry (ConcurrentHashMap)
     - Two-phase usage: `init(Class<T>)` to create, `instance(Class<T>)` to retrieve
     - Prevents double initialization (throws IllegalStateException)
     - **Important**: Does NOT prevent creating multiple instances via ComponentLoader directly
 
-5. **Dependencies** (`Dependencies.java`)
+6. **Dependencies** (`Dependencies.java`)
     - Type-safe map of dependencies passed to factories
     - Immutable after construction
     - Static factory methods: `of()`, `of(Class<T1>, T1)`, `of(Class<T1>, T1, Class<T2>, T2)`, etc.
     - Methods: `getDependency(Class<T>)`, `getOptionalDependency(Class<T>)`
+
+## When to Use Each Loader
+
+- **Use ComponentLoader** when:
+  - You expect exactly one implementation (enforced at runtime)
+  - You want fail-fast behavior if multiple implementations accidentally exist
+  - Example: Database connection manager, configuration service, main application service
+
+- **Use MultiComponentLoader** when:
+  - You explicitly want to load multiple implementations (e.g., plugin architecture)
+  - It's acceptable to have zero implementations (returns empty list)
+  - Example: Plugin systems, event listeners, middleware handlers, feature flags
+
+- **Use SingletonLoader** when:
+  - You need global singleton semantics with lifecycle management
+  - You want two-phase initialization (`init()` then `instance()`)
+  - Example: Application-wide services, resource managers
 
 ## ServiceLoader Registration
 
@@ -116,7 +141,7 @@ com.druvu.lib.loader.MySingletonFactory
 
 ## Key Design Principles
 
-1. **Thread Safety**: Both ComponentLoader and SingletonLoader synchronize on the target class
+1. **Thread Safety**: All loaders (ComponentLoader, MultiComponentLoader, SingletonLoader) synchronize on the target class
 2. **Null Safety**: Extensive null checks with NullPointerException for contract violations
 3. **Fail Fast**: Throws exceptions for missing factories, duplicate registrations, null components
 4. **Type Safety**: Generic-based API ensures compile-time type checking

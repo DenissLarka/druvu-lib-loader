@@ -1,5 +1,8 @@
 package com.druvu.lib.loader;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.function.Predicate;
 
@@ -40,6 +43,26 @@ public final class ServiceLoaderExtended {
 		}
 
 		return goodCandidate;
+	}
+
+	/**
+	 * Load all candidates matching the predicate from ServiceLoader.
+	 * Returns an empty list if no candidates are found.
+	 *
+	 * @param targetClass the target class to load
+	 * @param candidateChooser predicate to filter candidates
+	 * @param <T> type of the target class
+	 * @return unmodifiable list of all matching candidates (empty if none found)
+	 */
+	public static <T> List<T> createAll(Class<T> targetClass, Predicate<T> candidateChooser) {
+		Iterable<T> serviceLoader = ServiceLoader.load(targetClass);
+		List<T> candidates = new ArrayList<>();
+		for (T candidate : serviceLoader) {
+			if (candidateChooser.test(candidate)) {
+				candidates.add(candidate);
+			}
+		}
+		return Collections.unmodifiableList(candidates);
 	}
 
 	private static String shortName(Object object) {
