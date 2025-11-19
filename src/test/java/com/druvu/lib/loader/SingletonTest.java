@@ -38,9 +38,9 @@ public class SingletonTest {
 	@Test
 	public void testCreateSingletonInstance() {
 		// Verify that double initialization throws IllegalStateException
-		SingletonLoader.init(MySingleton.class);
+		SingletonLoader.load(MySingleton.class);
 
-		assertThatThrownBy(() -> SingletonLoader.init(MySingleton.class))
+		assertThatThrownBy(() -> SingletonLoader.load(MySingleton.class))
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("Already created");
 	}
@@ -48,17 +48,17 @@ public class SingletonTest {
 	@Test
 	public void testInstanceBeforeInit_ThrowsException() {
 		// Verify that accessing a singleton before initialization throws
-		assertThatThrownBy(() -> SingletonLoader.instance(MySingleton.class))
+		assertThatThrownBy(() -> SingletonLoader.get(MySingleton.class))
 			.isInstanceOf(IllegalStateException.class)
-			.hasMessageContaining("Singleton must be initialised before use");
+			.hasMessageContaining("Singleton must be loaded before use");
 	}
 
 	@Test
 	public void testInstanceReturnsSameObject() {
-		// Verify that multiple calls to instance() return the same object
-		MySingleton first = SingletonLoader.init(MySingleton.class);
-		MySingleton second = SingletonLoader.instance(MySingleton.class);
-		MySingleton third = SingletonLoader.instance(MySingleton.class);
+		// Verify that multiple calls to get() return the same object
+		MySingleton first = SingletonLoader.load(MySingleton.class);
+		MySingleton second = SingletonLoader.get(MySingleton.class);
+		MySingleton third = SingletonLoader.get(MySingleton.class);
 
 		assertThat(first).isSameAs(second);
 		assertThat(second).isSameAs(third);
@@ -66,7 +66,7 @@ public class SingletonTest {
 
 	@Test
 	public void testConcurrentInitialization_OnlyOneSucceeds() throws InterruptedException {
-		// Test that concurrent init() calls result in exactly one initialization
+		// Test that concurrent load() calls result in exactly one initialization
 		int threadCount = 10;
 		ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 		CountDownLatch startLatch = new CountDownLatch(1);
@@ -82,7 +82,7 @@ public class SingletonTest {
 					// Wait for signal to start all threads simultaneously
 					startLatch.await();
 
-					MySingleton instance = SingletonLoader.init(MySingleton.class);
+					MySingleton instance = SingletonLoader.load(MySingleton.class);
 					successCount.incrementAndGet();
 					createdInstance.compareAndSet(null, instance);
 				} catch (IllegalStateException e) {
@@ -108,16 +108,16 @@ public class SingletonTest {
 		assertThat(failureCount.get()).isEqualTo(threadCount - 1);
 
 		// Verify the instance is accessible and is the same one created
-		MySingleton instance = SingletonLoader.instance(MySingleton.class);
+		MySingleton instance = SingletonLoader.get(MySingleton.class);
 		assertThat(instance).isSameAs(createdInstance.get());
 	}
 
 	@Test
 	public void testConcurrentAccess_AllGetSameInstance() throws InterruptedException {
 		// Initialize the singleton first
-		MySingleton expected = SingletonLoader.init(MySingleton.class);
+		MySingleton expected = SingletonLoader.load(MySingleton.class);
 
-		// Test that concurrent instance() calls all return the same object
+		// Test that concurrent get() calls all return the same object
 		int threadCount = 20;
 		ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 		CountDownLatch startLatch = new CountDownLatch(1);
@@ -129,7 +129,7 @@ public class SingletonTest {
 			executor.submit(() -> {
 				try {
 					startLatch.await();
-					MySingleton instance = SingletonLoader.instance(MySingleton.class);
+					MySingleton instance = SingletonLoader.get(MySingleton.class);
 					if (instance == expected) {
 						sameInstanceCount.incrementAndGet();
 					}
@@ -153,9 +153,9 @@ public class SingletonTest {
 	public void testInitWithDependencies() {
 		// Test initialization with dependencies
 		Dependencies deps = new Dependencies();
-		MySingleton instance = SingletonLoader.init(MySingleton.class, deps);
+		MySingleton instance = SingletonLoader.load(MySingleton.class, deps);
 
 		assertThat(instance).isNotNull();
-		assertThat(SingletonLoader.instance(MySingleton.class)).isSameAs(instance);
+		assertThat(SingletonLoader.get(MySingleton.class)).isSameAs(instance);
 	}
 }

@@ -16,11 +16,11 @@ public final class ComponentLoader {
 	private ComponentLoader() {
 	}
 
-	public static <T> T create(final Class<T> targetClass) {
-		return create(targetClass, Dependencies.of());
+	public static <T> T load(final Class<T> targetClass) {
+		return load(targetClass, Dependencies.of());
 	}
 
-	public static <T> T create(final Class<T> targetClass, Dependencies dependencies) {
+	public static <T> T load(final Class<T> targetClass, Dependencies dependencies) {
 
 		Objects.requireNonNull(targetClass);
 		Objects.requireNonNull(dependencies);
@@ -43,7 +43,7 @@ public final class ComponentLoader {
 
 	private static <T> ComponentFactory<T> serviceLoaderExtendedCreate(Class<T> targetClass, Predicate<ComponentFactory> candidateChooser) {
 		try {
-			return ServiceLoaderExtended.create(ComponentFactory.class, candidateChooser);
+			return ServiceLoaderExtended.load(ComponentFactory.class, candidateChooser);
 		}
 		catch (TargetClassNotFoundException e) {
 			var newException = new TargetClassNotFoundException("ComponentFactory providing a %s not found".formatted(targetClass.getName()));

@@ -10,24 +10,24 @@ public class ComponentLoaderTest {
 	@Test(expectedExceptions = NullPointerException.class)
 	public void testCreate_WithNullTargetClass_ThrowsNullPointerException() {
 		Dependencies dependencies = createDefaultDependencies();
-		ComponentLoader.create(null, dependencies);
+		ComponentLoader.load(null, dependencies);
 	}
 
 	@Test(expectedExceptions = NullPointerException.class)
 	public void testCreate_WithNullDependencies_ThrowsNullPointerException() {
-		ComponentLoader.create(String.class, null);
+		ComponentLoader.load(String.class, null);
 	}
 
 	@Test(expectedExceptions = TargetClassNotFoundException.class)
 	public void testCreate_WhenFactoryCreatesNull_ThrowsIllegalStateException() {
 		Dependencies dependencies = createDefaultDependencies();
-		ComponentLoader.create(FakeComponent.class, dependencies);
+		ComponentLoader.load(FakeComponent.class, dependencies);
 	}
 
 	@Test(expectedExceptions = TargetClassNotFoundException.class)
 	public void testCreate_WhenFactoryNotFound_ThrowsTargetClassNotFoundException() {
 		Dependencies dependencies = createDefaultDependencies();
-		ComponentLoader.create(Integer.class, dependencies);
+		ComponentLoader.load(Integer.class, dependencies);
 	}
 
 	private Dependencies createDefaultDependencies() {

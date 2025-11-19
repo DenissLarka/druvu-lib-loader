@@ -18,11 +18,11 @@ public final class ServiceLoaderExtended {
 	private ServiceLoaderExtended() {
 	}
 
-	public static <T> T create(Class<T> targetClass) {
-		return create(targetClass, (candidate) -> true);
+	public static <T> T load(Class<T> targetClass) {
+		return load(targetClass, (candidate) -> true);
 	}
 
-	public static <T> T create(Class<T> targetClass, Predicate<T> candidateChooser) {
+	public static <T> T load(Class<T> targetClass, Predicate<T> candidateChooser) {
 		Iterable<T> serviceLoader = ServiceLoader.load(targetClass);
 		T goodCandidate = null;
 		for (T candidate : serviceLoader) {
@@ -54,7 +54,7 @@ public final class ServiceLoaderExtended {
 	 * @param <T> type of the target class
 	 * @return unmodifiable list of all matching candidates (empty if none found)
 	 */
-	public static <T> List<T> createAll(Class<T> targetClass, Predicate<T> candidateChooser) {
+	public static <T> List<T> loadAll(Class<T> targetClass, Predicate<T> candidateChooser) {
 		Iterable<T> serviceLoader = ServiceLoader.load(targetClass);
 		List<T> candidates = new ArrayList<>();
 		for (T candidate : serviceLoader) {

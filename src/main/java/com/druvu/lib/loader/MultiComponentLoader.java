@@ -100,7 +100,7 @@ public final class MultiComponentLoader {
 	@SuppressWarnings("unchecked")
 	private static <T> List<ComponentFactory<T>> createComponentFactories(Class<T> targetClass) {
 		final Predicate<ComponentFactory> candidateChooser = factory -> targetClass == factory.getComponentType();
-		List<ComponentFactory> rawFactories = ServiceLoaderExtended.createAll(ComponentFactory.class, candidateChooser);
+		List<ComponentFactory> rawFactories = ServiceLoaderExtended.loadAll(ComponentFactory.class, candidateChooser);
 		// Safe cast because we filter factories by getComponentType() matching targetClass
 		return (List<ComponentFactory<T>>) (List<?>) rawFactories;
 	}
