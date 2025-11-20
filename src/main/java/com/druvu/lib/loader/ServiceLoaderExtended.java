@@ -22,6 +22,17 @@ public final class ServiceLoaderExtended {
 		return load(targetClass, (candidate) -> true);
 	}
 
+	/**
+	 * Load a single candidate matching the predicate from ServiceLoader.
+	 * Throws an exception if multiple matching candidates are found or if no candidate is found.
+	 *
+	 * @param targetClass the target class to load
+	 * @param candidateChooser predicate to filter candidates
+	 * @param <T> type of the target class
+	 * @return the single matching candidate
+	 * @throws IllegalStateException if more than one matching candidate is found
+	 * @throws TargetClassNotFoundException if no matching candidate is found
+	 */
 	public static <T> T load(Class<T> targetClass, Predicate<T> candidateChooser) {
 		Iterable<T> serviceLoader = ServiceLoader.load(targetClass);
 		T goodCandidate = null;
