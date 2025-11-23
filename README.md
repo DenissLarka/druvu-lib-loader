@@ -22,7 +22,7 @@ It enables dependency injection and singleton management through factories. Suit
     <dependency>
         <groupId>com.druvu</groupId>
         <artifactId>druvu-lib-loader</artifactId>
-        <version>1.0.1</version>
+        <version>1.0.2</version>
     </dependency>
 </dependencies>
 ```
