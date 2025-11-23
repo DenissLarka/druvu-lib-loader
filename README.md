@@ -60,7 +60,7 @@ The library implements a two-tier component loading pattern:
 
 1. **ServiceLoaderExtended** (`ServiceLoaderExtended.java`)
     - Wraps Java's ServiceLoader with predicate-based filtering
-    - Two modes: `create()` enforces single implementation (fails if multiple found), `createAll()` returns all matching candidates
+    - Two modes: `load()` enforces single implementation (fails if multiple found), `loadAll()` returns all matching candidates
     - Used internally by ComponentLoader, MultiComponentLoader, and SingletonLoader
 
 2. **ComponentFactory Interface** (`ComponentFactory.java`)
@@ -75,7 +75,7 @@ The library implements a two-tier component loading pattern:
     - Uses ServiceLoader to find appropriate ComponentFactory
     - **Enforces single implementation**: Throws exception if multiple factories for the same component type exist
     - Thread-safe (synchronized on target class)
-    - Methods: `create(Class<T>)`, `create(Class<T>, Dependencies)`, `dispose(Class<T>, T)`
+    - Methods: `load(Class<T>)`, `load(Class<T>, Dependencies)`, `dispose(Class<T>, T)`
 
 4. **MultiComponentLoader** (`MultiComponentLoader.java`)
     - Entry point for loading **multiple** component instances (e.g., plugin systems)
