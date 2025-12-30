@@ -1,6 +1,7 @@
 package com.druvu.lib.loader;
 
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 /**
@@ -12,6 +13,8 @@ import java.util.function.Predicate;
  * on 06 Aug 2025
  */
 public final class ComponentLoader {
+
+	private static final ConcurrentHashMap<Class<?>, Object> LOCKS = new ConcurrentHashMap<>();
 
 	private ComponentLoader() {
 	}
@@ -25,7 +28,7 @@ public final class ComponentLoader {
 		Objects.requireNonNull(targetClass);
 		Objects.requireNonNull(dependencies);
 
-		synchronized (targetClass) {
+		synchronized (LOCKS.computeIfAbsent(targetClass, k -> new Object())) {
 			final ComponentFactory<T> componentFactory = createComponentFactory(targetClass);
 			final T result = componentFactory.createComponent(dependencies);
 			if (result == null) {

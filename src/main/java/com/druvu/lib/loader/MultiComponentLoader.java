@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 /**
@@ -18,6 +19,8 @@ import java.util.function.Predicate;
  * on 15 Nov 2025
  */
 public final class MultiComponentLoader {
+
+	private static final ConcurrentHashMap<Class<?>, Object> LOCKS = new ConcurrentHashMap<>();
 
 	private MultiComponentLoader() {
 	}
@@ -50,7 +53,7 @@ public final class MultiComponentLoader {
 		Objects.requireNonNull(targetClass, "targetClass cannot be null");
 		Objects.requireNonNull(dependencies, "dependencies cannot be null");
 
-		synchronized (targetClass) {
+		synchronized (LOCKS.computeIfAbsent(targetClass, k -> new Object())) {
 			final List<ComponentFactory<T>> componentFactories = createComponentFactories(targetClass);
 			final List<T> results = new ArrayList<>(componentFactories.size());
 
@@ -79,7 +82,7 @@ public final class MultiComponentLoader {
 		Objects.requireNonNull(targetClass, "targetClass cannot be null");
 		Objects.requireNonNull(instances, "instances cannot be null");
 
-		synchronized (targetClass) {
+		synchronized (LOCKS.computeIfAbsent(targetClass, k -> new Object())) {
 			final List<ComponentFactory<T>> componentFactories = createComponentFactories(targetClass);
 			final List<T> disposedComponents = new ArrayList<>(instances.size());
 
