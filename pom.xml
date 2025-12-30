@@ -303,11 +303,10 @@
 								</goals>
 								<configuration>
 									<gpgArguments>
-										<arg>--homedir</arg>
-										<arg>${gpg.homedir}</arg>
+										<arg>--batch</arg>
+										<arg>--pinentry-mode</arg>
+										<arg>loopback</arg>
 									</gpgArguments>
-									<keyname>${gpg.keyname}</keyname>
-									<useAgent>true</useAgent>
 								</configuration>
 							</execution>
 						</executions>
