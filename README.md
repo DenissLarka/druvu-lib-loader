@@ -1,5 +1,9 @@
 # druvu-lib-loader
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.druvu/druvu-lib-loader.svg)](https://central.sonatype.com/artifact/com.druvu/druvu-lib-loader)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DenissLarka_druvu-lib-loader&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DenissLarka_druvu-lib-loader)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=DenissLarka_druvu-lib-loader&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=DenissLarka_druvu-lib-loader)
+
 ## Overview
 
 `druvu-lib-loader` Is a library that provides a type-safe component loading system built on top of Java's ServiceLoader
@@ -8,46 +12,28 @@ It enables dependency injection and singleton management through factories. Suit
 
 ## Usage
 
-### 1. Add Repository and Dependency to `pom.xml`
+### Add Dependency to `pom.xml`
+
+The library is available on Maven Central:
 
 ```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/DenissLarka/druvu-lib-loader</url>
-    </repository>
-</repositories>
-
-<dependencies>
-    <dependency>
-        <groupId>com.druvu</groupId>
-        <artifactId>druvu-lib-loader</artifactId>
-        <version>1.0.2</version>
-    </dependency>
-</dependencies>
+<dependency>
+    <groupId>com.druvu</groupId>
+    <artifactId>druvu-lib-loader</artifactId>
+    <version>1.0.7</version>
+</dependency>
 ```
 
-### 2. Create a GitHub Personal Access Token
+### Gradle
 
-1. Go to https://github.com/settings/tokens
-2. Generate a new token (classic)
-3. Select scope: **`read:packages`**
-4. Copy the token and use it as a password in settings.xml
+```groovy
+implementation 'com.druvu:druvu-lib-loader:1.0.7'
+```
 
-### 3. Configure Authentication in `~/.m2/settings.xml`
+### Gradle (Kotlin DSL)
 
-```xml
-<settings>
-    <servers>
-        <server>
-            <id>github</id>
-            <!-- Replace it with your GitHub username -->
-            <username>YOUR_GITHUB_USERNAME</username>
-            <!-- Replace it with your GitHub token (created in step 2) -->
-            <password>YOUR_GITHUB_TOKEN</password>
-        </server>
-    </servers>
-</settings>
+```kotlin
+implementation("com.druvu:druvu-lib-loader:1.0.7")
 ```
 
 
