@@ -29,10 +29,10 @@ jobs:
         gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
     - name: Build with Maven
-      run: mvn -B package --file pom.xml --enable-preview
+      run: mvn -B package --file pom.xml
 
     - name: Publish to Maven Central
-      run: mvn deploy -Prelease --enable-preview
+      run: mvn -B deploy -Prelease
       env:
         MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
