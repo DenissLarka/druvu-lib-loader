@@ -5,10 +5,12 @@
 
 	<groupId>com.druvu</groupId>
 	<artifactId>druvu-lib-loader</artifactId>
-	<version>1.0.3-SNAPSHOT</version>
+	<version>1.0.3</version>
 	<packaging>jar</packaging>
 
 	<name>DRUVU.COM / LIB / LOADER</name>
+	<description>A type-safe component loading system built on Java ServiceLoader with dependency injection and singleton management</description>
+	<url>https://github.com/DenissLarka/druvu-lib-loader</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -18,6 +20,21 @@
 		<assertj.version>3.27.6</assertj.version>
 		<maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
 	</properties>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Deniss LARKA</name>
+			<email>deniss.larka@gmail.com</email>
+		</developer>
+	</developers>
 
 	<scm>
 		<url>https://github.com/DenissLarka/druvu-lib-loader</url>
@@ -115,6 +132,21 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
+			<!-- maven-source-plugin -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.4.0</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<!-- maven-surefire-plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -130,21 +162,6 @@
 					-->
 					<useModulePath>false</useModulePath>
 				</configuration>
-			</plugin>
-			<!-- maven-source-plugin -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>3.4.0</version>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<phase>package</phase>
-						<goals>
-							<goal>jar-no-fork</goal>
-						</goals>
-					</execution>
-				</executions>
 			</plugin>
 			<!-- maven-javadoc-plugin -->
 			<plugin>
@@ -261,5 +278,56 @@
 
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-project-info-reports-plugin</artifactId>
+						<version>3.9.0</version>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>3.2.8</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+								<configuration>
+									<gpgArguments>
+										<arg>--homedir</arg>
+										<arg>${gpg.homedir}</arg>
+									</gpgArguments>
+									<keyname>${gpg.keyname}</keyname>
+									<useAgent>true</useAgent>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<version>0.9.0</version>
+						<extensions>true</extensions>
+						<configuration>
+							<publishingServerId>central</publishingServerId>
+							<tokenAuth>true</tokenAuth>
+							<checksums>required</checksums>
+							<skipPublishing>false</skipPublishing>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+
+		</profile>
+	</profiles>
 
 </project>
