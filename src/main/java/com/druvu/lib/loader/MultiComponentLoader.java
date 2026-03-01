@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -102,10 +104,27 @@ public final class MultiComponentLoader {
 
 	@SuppressWarnings("unchecked")
 	private static <T> List<ComponentFactory<T>> createComponentFactories(Class<T> targetClass) {
-		final Predicate<ComponentFactory> candidateChooser = factory -> targetClass == factory.getComponentType();
+		final Predicate<ComponentFactory> candidateChooser = factory -> targetClass == factory.type();
 		List<ComponentFactory> rawFactories = ServiceLoaderExtended.loadAll(ComponentFactory.class, candidateChooser);
-		// Safe cast because we filter factories by getComponentType() matching targetClass
-		return (List<ComponentFactory<T>>) (List<?>) rawFactories;
+		if (!rawFactories.isEmpty()) {
+			return (List<ComponentFactory<T>>) (List<?>) rawFactories;
+		}
+		return findAllInProviderRegistry(targetClass);
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static <T> List<ComponentFactory<T>> findAllInProviderRegistry(Class<T> targetClass) {
+		try {
+			List<ComponentFactory<T>> found = new ArrayList<>();
+			for (ServiceLoader.Provider p : ServiceLoader.load(ServiceLoader.Provider.class)) {
+				if (p instanceof ComponentFactory<?> cf && targetClass == cf.type()) {
+					found.add((ComponentFactory<T>) cf);
+				}
+			}
+			return Collections.unmodifiableList(found);
+		} catch (ServiceConfigurationError e) {
+			return Collections.emptyList();
+		}
 	}
 
 }

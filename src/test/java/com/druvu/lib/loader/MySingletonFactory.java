@@ -7,8 +7,13 @@ package com.druvu.lib.loader;
 public class MySingletonFactory implements ComponentFactory<MySingleton> {
 
 	@Override
-	public MySingleton createComponent(Dependencies dependencies) {
+	public MySingleton get() {
 		return new MySingleton();
+	}
+
+	@Override
+	public MySingleton createComponent(Dependencies dependencies) {
+		return get();
 	}
 
 	@Override
@@ -17,7 +22,7 @@ public class MySingletonFactory implements ComponentFactory<MySingleton> {
 	}
 
 	@Override
-	public Class getComponentType() {
+	public Class<MySingleton> type() {
 		return MySingleton.class;
 	}
 }

@@ -6,7 +6,7 @@
 
 ## Overview
 
-`druvu-lib-loader` is a type-safe component loading library built on top of Java's ServiceLoader mechanism.
+`druvu-lib-loader` is a type-safe component loading library built on top of Java's `ServiceLoader` mechanism.
 It enables clean separation between API and implementation modules through factories and dependency injection.
 Fully compatible with JPMS (Java Platform Module System).
 
@@ -50,7 +50,7 @@ public interface AccBook {
 
 ### Step 2: Create a Static Factory Method
 
-The static factory method provides a clean API for loading components. It can be placed in any class:
+The static factory method provides a clean API for loading components:
 
 ```java
 public interface AccBookFactory {
@@ -61,7 +61,7 @@ public interface AccBookFactory {
 }
 ```
 
-The `Dependencies.of()` method accepts type-value pairs. The type serves as a key, and the value is passed to the factory:
+The `Dependencies.of()` method accepts type-value pairs. The type serves as a key:
 
 ```java
 // Single dependency
@@ -80,14 +80,12 @@ public class GnucashBookFactory implements ComponentFactory<AccBook> {
 
     @Override
     public AccBook createComponent(Dependencies dependencies) {
-        var path = dependencies.getOptionalDependency(Path.class)
-            .orElseThrow(() -> new IllegalArgumentException("Path dependency required"));
-
-        return new GnucashAccBook(path);  // Your implementation
+        var path = dependencies.getDependency(Path.class);
+        return new GnucashAccBook(path);
     }
 
     @Override
-    public Class<AccBook> getComponentType() {
+    public Class<AccBook> type() {
         return AccBook.class;
     }
 }
@@ -125,13 +123,73 @@ AccBook book = AccBookFactory.load(Paths.get("/path/to/file.xml"));
 System.out.println(book.id());
 ```
 
-The implementation is discovered automatically via ServiceLoader. Your application code only depends on the API module.
+The implementation is discovered automatically via `ServiceLoader`. Your application code only depends on the API module.
+
+## Implementing Without a Library Dependency
+
+If your component does not require runtime dependencies, you can register it directly under the
+target interface without depending on `druvu-lib-loader` at all. `ComponentLoader` will discover
+it automatically as a fallback.
+
+Register a direct implementation or a static `provider()` factory:
+
+```java
+// Direct implementation — no library dependency needed
+public class CsvAccBookImpl implements AccBook {
+    public CsvAccBookImpl() { ... }  // no-arg constructor required
+    // ...
+}
+```
+
+Or a provider factory with a static method:
+
+```java
+public class CsvAccBookFactory {
+    public static AccBook provider() {
+        return new CsvAccBookImpl();
+    }
+}
+```
+
+Register in `META-INF/services/com.myapp.AccBook`:
+```
+com.myapp.csv.CsvAccBookImpl
+```
+
+Or in `module-info.java`:
+```java
+provides com.myapp.AccBook with com.myapp.csv.CsvAccBookFactory;
+```
+
+`ComponentLoader` tries `ComponentFactory` first. If none is found, it falls back to
+`ServiceLoader.load(AccBook.class)` automatically.
 
 ## Core Components
 
+### ComponentFactory
+
+The central extension point. Implements `ServiceLoader.Provider<T>` from the JDK. Requires:
+- `type()` — declares which component type this factory produces
+- `createComponent(Dependencies)` — creates a component with injected dependencies
+
+```java
+public class MyFactory implements ComponentFactory<MyService> {
+
+    @Override
+    public MyService createComponent(Dependencies deps) {
+        return new MyServiceImpl(deps.getDependency(DataSource.class));
+    }
+
+    @Override
+    public Class<MyService> type() {
+        return MyService.class;
+    }
+}
+```
+
 ### ComponentLoader
 
-Entry point for loading a **single** component instance. Throws an exception if multiple factories exist for the same type.
+Entry point for loading a **single** component instance. Throws if multiple factories match the same type.
 
 ```java
 // Without dependencies
@@ -162,14 +220,14 @@ MultiComponentLoader.disposeAll(Plugin.class, plugins);
 
 ### SingletonLoader
 
-Manages global singletons with two-phase initialization.
+Manages global singletons with two-phase initialization — `load` once at startup, `get` everywhere else.
 
 ```java
-// Initialize once at startup
-SingletonLoader.init(AppConfig.class, dependencies);
+// Initialize once at startup (throws if called again for the same type)
+AppConfig config = SingletonLoader.load(AppConfig.class, dependencies);
 
-// Retrieve anywhere in application
-AppConfig config = SingletonLoader.instance(AppConfig.class);
+// Retrieve anywhere in the application
+AppConfig config = SingletonLoader.get(AppConfig.class);
 ```
 
 ### Dependencies
@@ -180,16 +238,16 @@ Type-safe container for passing dependencies to factories.
 // Empty
 Dependencies.of()
 
-// Single dependency (type as key, value as value)
+// Single dependency (type as key, instance as value)
 Dependencies.of(Path.class, path)
 
 // Multiple dependencies
 Dependencies.of(Path.class, path, Config.class, config)
 
-// In factory - required dependency (throws if missing)
+// In factory — required dependency (throws if missing)
 Path path = dependencies.getDependency(Path.class);
 
-// In factory - optional dependency
+// In factory — optional dependency
 Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 ```
 
@@ -206,4 +264,4 @@ Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 - **Thread Safety**: All loaders synchronize on the target class
 - **Fail Fast**: Throws exceptions for missing factories or duplicate registrations
 - **Type Safety**: Generic-based API ensures compile-time type checking
-- **Immutability**: Dependencies are immutable after construction
+- **Immutability**: `Dependencies` are immutable after construction

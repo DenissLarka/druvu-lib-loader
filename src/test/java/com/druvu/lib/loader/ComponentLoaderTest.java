@@ -1,8 +1,5 @@
 package com.druvu.lib.loader;
 
-import com.druvu.lib.loader.ComponentLoader;
-import com.druvu.lib.loader.Dependencies;
-import com.druvu.lib.loader.TargetClassNotFoundException;
 import org.testng.annotations.Test;
 
 public class ComponentLoaderTest {
@@ -41,8 +38,13 @@ public class ComponentLoaderTest {
 
 	private static class ServiceLoaderExtendedStub implements ComponentFactory {
 		@Override
-		public Class<?> getComponentType() {
+		public Class type() {
 			return FakeComponent.class;
+		}
+
+		@Override
+		public Object get() {
+			return null;
 		}
 
 		@Override

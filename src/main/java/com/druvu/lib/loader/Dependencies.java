@@ -1,5 +1,6 @@
 package com.druvu.lib.loader;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -15,6 +16,10 @@ import java.util.Optional;
 public final class Dependencies {
 
 	private final Map<Class<?>, Object> map;
+
+	private Dependencies() {
+		this.map = Collections.emptyMap();
+	}
 
 	public Dependencies(Object... input) {
 		if ((input.length & 1) != 0) { // implicit null check
@@ -33,6 +38,10 @@ public final class Dependencies {
 			}
 		}
 		this.map = Map.copyOf(buildingMap);
+	}
+
+	public static Dependencies of() {
+		return new Dependencies();
 	}
 
 	public static <T1> Dependencies of(Class<T1> k1, T1 v1) {

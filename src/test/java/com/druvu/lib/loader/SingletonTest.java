@@ -1,6 +1,5 @@
 package com.druvu.lib.loader;
 
-import org.assertj.core.api.Assertions;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 

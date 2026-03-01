@@ -1,6 +1,6 @@
 package com.druvu.lib.loader;
 
-import java.lang.StableValue;
+import java.lang.StableValue; // NOPMD UnnecessaryImport - StableValue is a Java 25 preview API, not auto-imported
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
