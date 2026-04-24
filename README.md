@@ -10,30 +10,6 @@
 It enables clean separation between API and implementation modules through factories and dependency injection.
 Fully compatible with JPMS (Java Platform Module System).
 
-## Installation
-
-### Maven
-
-```xml
-<dependency>
-    <groupId>com.druvu</groupId>
-    <artifactId>druvu-lib-loader</artifactId>
-    <version>1.0.7</version>
-</dependency>
-```
-
-### Gradle
-
-```groovy
-implementation 'com.druvu:druvu-lib-loader:1.0.7'
-```
-
-### Gradle (Kotlin DSL)
-
-```kotlin
-implementation("com.druvu:druvu-lib-loader:1.0.7")
-```
-
 ## Quick Start Example
 
 This example shows how to create a file reader with pluggable implementations.
@@ -265,3 +241,82 @@ Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 - **Fail Fast**: Throws exceptions for missing factories or duplicate registrations
 - **Type Safety**: Generic-based API ensures compile-time type checking
 - **Immutability**: `Dependencies` are immutable after construction
+
+## Installation
+
+Requires **Java 21 LTS** or later.
+
+### Maven Central (recommended)
+
+The artifact is published to Maven Central — no additional repository configuration needed.
+
+```xml
+<dependency>
+    <groupId>com.druvu</groupId>
+    <artifactId>druvu-lib-loader</artifactId>
+    <version>1.1.0</version>
+</dependency>
+```
+
+Gradle:
+
+```groovy
+implementation 'com.druvu:druvu-lib-loader:1.1.0'
+```
+
+Gradle (Kotlin DSL):
+
+```kotlin
+implementation("com.druvu:druvu-lib-loader:1.1.0")
+```
+
+### GitHub Packages (alternative)
+
+The artifact is also published to GitHub Packages. Using this channel requires authentication with a GitHub Personal Access Token.
+
+1. Create a GitHub Personal Access Token with the `read:packages` scope at https://github.com/settings/tokens.
+
+2. Add the credentials to `~/.m2/settings.xml`:
+
+   ```xml
+   <settings>
+       <servers>
+           <server>
+               <id>github-druvu-lib-loader</id>
+               <username>YOUR_GITHUB_USERNAME</username>
+               <password>YOUR_PAT</password>
+           </server>
+       </servers>
+   </settings>
+   ```
+
+3. Add the repository to your consumer project's `pom.xml`:
+
+   ```xml
+   <repositories>
+       <repository>
+           <id>github-druvu-lib-loader</id>
+           <url>https://maven.pkg.github.com/DenissLarka/druvu-lib-loader</url>
+       </repository>
+   </repositories>
+   ```
+
+4. Declare the dependency as usual:
+
+   ```xml
+   <dependency>
+       <groupId>com.druvu</groupId>
+       <artifactId>druvu-lib-loader</artifactId>
+       <version>1.1.0</version>
+   </dependency>
+   ```
+
+### JPMS consumers
+
+If your project uses the Java Platform Module System, add to your `module-info.java`:
+
+```java
+requires com.druvu.lib.loader;
+```
+
+Note: in releases prior to 1.1.0 the module name was `druvu.lib.loader`.
