@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests for {@link SingletonLoader} with StableValue integration.
+ * Tests for {@link SingletonLoader}.
  * Verifies thread-safety, single initialization semantics, and proper exception handling.
  *
  * @author Deniss Larka

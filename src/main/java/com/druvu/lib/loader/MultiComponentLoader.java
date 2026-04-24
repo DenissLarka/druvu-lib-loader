@@ -55,7 +55,7 @@ public final class MultiComponentLoader {
 		Objects.requireNonNull(targetClass, "targetClass cannot be null");
 		Objects.requireNonNull(dependencies, "dependencies cannot be null");
 
-		synchronized (LOCKS.computeIfAbsent(targetClass, _ -> new Object())) {
+		synchronized (LOCKS.computeIfAbsent(targetClass, k -> new Object())) {
 			final List<ComponentFactory<T>> componentFactories = createComponentFactories(targetClass);
 			final List<T> results = new ArrayList<>(componentFactories.size());
 
@@ -84,7 +84,7 @@ public final class MultiComponentLoader {
 		Objects.requireNonNull(targetClass, "targetClass cannot be null");
 		Objects.requireNonNull(instances, "instances cannot be null");
 
-		synchronized (LOCKS.computeIfAbsent(targetClass, _ -> new Object())) {
+		synchronized (LOCKS.computeIfAbsent(targetClass, k -> new Object())) {
 			final List<ComponentFactory<T>> componentFactories = createComponentFactories(targetClass);
 			final List<T> disposedComponents = new ArrayList<>(instances.size());
 

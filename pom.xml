@@ -14,7 +14,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<java.version>25</java.version>
+		<java.version>21</java.version>
 		<lombok.version>1.18.46</lombok.version>
 		<slf4j.version>2.0.17</slf4j.version>
 		<assertj.version>3.27.7</assertj.version>
@@ -122,7 +122,6 @@
 					<showWarnings>true</showWarnings>
 					<compilerArgs>
 						<arg>-parameters</arg>
-						<arg>--enable-preview</arg>
 					</compilerArgs>
 					<annotationProcessorPaths>
 						<path>
@@ -154,8 +153,6 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>${maven-surefire-plugin.version}</version>
 				<configuration>
-					<!-- Enable preview features -->
-					<argLine>--enable-preview</argLine>
 					<!--
 					  Run tests on classpath instead of module-path.
 					  This is simpler for testing and allows ServiceLoader to find test implementations.
@@ -182,7 +179,6 @@
 					<show>public</show>
 					<source>${java.version}</source>
 					<doclint>none</doclint>
-					<additionalOptions>--enable-preview</additionalOptions>
 				</configuration>
 			</plugin>
 			<!-- spotbugs-maven-plugin -->

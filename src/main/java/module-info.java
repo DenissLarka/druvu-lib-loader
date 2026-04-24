@@ -4,7 +4,7 @@
  * This module provides a ServiceLoader-based dependency injection framework with
  * singleton management capabilities.
  */
-module druvu.lib.loader {
+module com.druvu.lib.loader {
 	// Export the main API package for consumers
 	exports com.druvu.lib.loader;
 

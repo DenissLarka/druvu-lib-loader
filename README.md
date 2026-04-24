@@ -108,7 +108,7 @@ com.myapp.gnucash.io.GnucashBookFactory
 
 ```java
 module myapp.gnucash.xml {
-    requires druvu.lib.loader;
+    requires com.druvu.lib.loader;
     requires myapp.api;
 
     provides com.druvu.lib.loader.ComponentFactory
