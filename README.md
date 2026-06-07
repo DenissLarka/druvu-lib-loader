@@ -16,21 +16,15 @@ This example shows how to create a file reader with pluggable implementations.
 
 ### Step 1: Define Your Component Interface (API Module)
 
+Add a `static load(...)` factory method to the interface itself, so callers need only one type:
+
 ```java
 // In your API module (e.g., myapp-api)
 public interface AccBook {
     String id();
     List<Account> accounts();
-}
-```
 
-### Step 2: Create a Static Factory Method
-
-The static factory method provides a clean API for loading components:
-
-```java
-public interface AccBookFactory {
-
+    // Convenience factory — discovers the implementation via ServiceLoader
     static AccBook load(Path path) {
         return ComponentLoader.load(AccBook.class, Dependencies.of(Path.class, path));
     }
@@ -47,7 +41,10 @@ Dependencies.of(Path.class, path)
 Dependencies.of(Path.class, path, Config.class, config)
 ```
 
-### Step 3: Implement ComponentFactory (Implementation Module)
+> Prefer a dedicated `AccBookFactory` interface to hold `load` if you want the data interface
+> to stay free of any `druvu-lib-loader` reference, or expect several load/config entry points.
+
+### Step 2: Implement ComponentFactory (Implementation Module)
 
 In your implementation module (e.g., `myapp-gnucash-xml`), create a factory:
 
@@ -67,7 +64,7 @@ public class GnucashBookFactory implements ComponentFactory<AccBook> {
 }
 ```
 
-### Step 4: Register the Factory
+### Step 3: Register the Factory
 
 **For non-JPMS projects**, create a file at:
 
@@ -92,10 +89,10 @@ module myapp.gnucash.xml {
 }
 ```
 
-### Step 5: Use It
+### Step 4: Use It
 
 ```java
-AccBook book = AccBookFactory.load(Paths.get("/path/to/file.xml"));
+AccBook book = AccBook.load(Paths.get("/path/to/file.xml"));
 System.out.println(book.id());
 ```
 
