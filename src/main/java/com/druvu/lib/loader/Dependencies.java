@@ -65,7 +65,7 @@ public final class Dependencies {
 			Class<T1> k1, T1 v1,
 			Class<T2> k2, T2 v2,
 			Class<T3> k3, T3 v3,
-			Class<T4> k4, T3 v4) {
+			Class<T4> k4, T4 v4) {
 		return new Dependencies(k1, v1, k2, v2, k3, v3, k4, v4);
 	}
 
@@ -73,8 +73,8 @@ public final class Dependencies {
 			Class<T1> k1, T1 v1,
 			Class<T2> k2, T2 v2,
 			Class<T3> k3, T3 v3,
-			Class<T4> k4, T3 v4,
-			Class<T5> k5, T3 v5) {
+			Class<T4> k4, T4 v4,
+			Class<T5> k5, T5 v5) {
 		return new Dependencies(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5);
 	}
 

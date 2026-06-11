@@ -98,6 +98,8 @@ System.out.println(book.id());
 
 The implementation is discovered automatically via `ServiceLoader`. Your application code only depends on the API module.
 
+Need **all** implementations instead of exactly one — plugin style? Same pattern, opposite cardinality: see [MultiComponentLoader](#multicomponentloader) below.
+
 ## Implementing Without a Library Dependency
 
 If your component does not require runtime dependencies, you can register it directly under the
@@ -178,7 +180,7 @@ ComponentLoader.dispose(MyComponent.class, component);
 
 ### MultiComponentLoader
 
-Loads **all** implementations of a component type. Useful for plugin systems.
+Loads **all** implementations of a component type — the plugin case. Every registered factory receives the same `Dependencies`; you get all the instances. Same discovery and argument-passing as `ComponentLoader`, opposite cardinality rule.
 
 ```java
 // Load all plugins
@@ -236,7 +238,7 @@ Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 
 - **Thread Safety**: All loaders synchronize on the target class
 - **Fail Fast**: Throws exceptions for missing factories or duplicate registrations
-- **Type Safety**: Generic-based API ensures compile-time type checking
+- **Type Safety**: Generic API type-checks dependency key/value pairs at compile time; which dependencies a factory requires is resolved (and validated) at runtime
 - **Immutability**: `Dependencies` are immutable after construction
 
 ## Installation
