@@ -1,0 +1,36 @@
+name: Bug report
+description: Something behaves incorrectly or fails
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: druvu-lib-loader version
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: module-system
+    attributes:
+      label: Module system
+      options:
+        - JPMS (module-info.java)
+        - Classpath (META-INF/services)
+        - Both / mixed
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, what happened instead? A stack trace helps.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Smallest interface + factory + registration that shows the problem.
+      render: java
+    validations:
+      required: false

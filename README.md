@@ -10,6 +10,41 @@
 It enables clean separation between API and implementation modules through factories and dependency injection.
 Fully compatible with JPMS (Java Platform Module System).
 
+Project page: [druvu.com/projects/druvu-lib-loader](https://druvu.com/projects/druvu-lib-loader.html)
+
+## Why not plain `ServiceLoader`?
+
+`ServiceLoader` is the right tool when an implementation has a no-arg constructor (or a static
+`provider()` method). The friction starts when the implementation needs dependencies to be
+created — a `Path`, a `Config`, a `DataSource`. Discovery is solved; supplying is not — there is
+no way to hand the component its dependencies:
+
+```java
+// Two-phase initialization: the object exists before it is valid
+AccBook book = ServiceLoader.load(AccBook.class).findFirst().orElseThrow();
+((Configurable) book).init(path);
+```
+
+The usual escape is a hand-written factory SPI — define an `AccBookFactory` interface, register
+*it* as the service, call `factory.create(path)`. That works; after rewriting the same glue in
+project after project, it became this library. What it adds over the raw pattern:
+
+- **Dependencies at creation** — the factory receives type-keyed `Dependencies`; the
+  implementation is created valid, with no `init()` phase.
+- **Fail-fast cardinality** — `ComponentLoader.load` throws when several factories match
+  (`findFirst()` silently picks one) and throws when none do.
+- **The plugin case** — `MultiComponentLoader.loadAll` when you want *all* implementations.
+- **Transparency preserved** — underneath it is still `ServiceLoader` plus JPMS
+  `provides`/`uses`: no reflection scanning, no annotations, no container. The
+  `AccBook.load(path)` one-liner below is a convention you write once per interface,
+  not code generation.
+
+**When not to use it:** if your implementations are no-arg and unique, plain `ServiceLoader`
+already serves you well (this library discovers such implementations as a fallback anyway — see
+[Implementing Without a Library Dependency](#implementing-without-a-library-dependency)). And if
+your application runs on a DI container (Spring, Guice), the container owns construction; this
+library targets libraries and plugins that should not impose one.
+
 ## Quick Start Example
 
 This example shows how to create a file reader with pluggable implementations.
@@ -245,6 +280,9 @@ Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 
 Requires **Java 21 LTS** or later.
 
+Runtime dependency: the SLF4J API (`org.slf4j`) for logging — bring any binding you like, or none
+(SLF4J falls back to no-op).
+
 ### Maven Central (recommended)
 
 The artifact is published to Maven Central — no additional repository configuration needed.
@@ -319,3 +357,9 @@ requires com.druvu.lib.loader;
 ```
 
 Note: in releases prior to 1.1.0 the module name was `druvu.lib.loader`.
+
+## Feedback
+
+- Found a bug or missing a feature? [Open an issue](https://github.com/DenissLarka/druvu-lib-loader/issues/new/choose) — templates provided.
+- Direction input welcome on the pinned issue: [What should druvu-lib-loader do next?](https://github.com/DenissLarka/druvu-lib-loader/issues/28)
+- More druvu libraries and tools: [druvu.com](https://druvu.com)

@@ -1,0 +1,25 @@
+name: Feature request
+description: A use case the library does not cover (or covers clumsily)
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the current API makes hard?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed shape (optional)
+      description: How would you like it to look at the call site?
+      render: java
+    validations:
+      required: false
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround (optional)
+    validations:
+      required: false

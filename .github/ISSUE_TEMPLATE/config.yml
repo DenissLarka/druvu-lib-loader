@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: What should druvu-lib-loader do next?
+    url: https://github.com/DenissLarka/druvu-lib-loader/issues/28
+    about: Direction input — comments here decide the roadmap.
+  - name: druvu.com
+    url: https://druvu.com
+    about: Project pages for all druvu libraries and tools.
