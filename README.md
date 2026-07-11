@@ -291,20 +291,20 @@ The artifact is published to Maven Central — no additional repository configur
 <dependency>
     <groupId>com.druvu</groupId>
     <artifactId>druvu-lib-loader</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation 'com.druvu:druvu-lib-loader:1.1.0'
+implementation 'com.druvu:druvu-lib-loader:1.1.1'
 ```
 
 Gradle (Kotlin DSL):
 
 ```kotlin
-implementation("com.druvu:druvu-lib-loader:1.1.0")
+implementation("com.druvu:druvu-lib-loader:1.1.1")
 ```
 
 ### GitHub Packages (alternative)
@@ -344,7 +344,7 @@ The artifact is also published to GitHub Packages. Using this channel requires a
    <dependency>
        <groupId>com.druvu</groupId>
        <artifactId>druvu-lib-loader</artifactId>
-       <version>1.1.0</version>
+       <version>1.1.1</version>
    </dependency>
    ```
 
