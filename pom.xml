@@ -19,6 +19,8 @@
 		<slf4j.version>2.0.18</slf4j.version>
 		<assertj.version>3.27.7</assertj.version>
 		<maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
+		<spotless-maven-plugin.version>3.9.0</spotless-maven-plugin.version>
+		<palantir-java-format.version>2.90.0</palantir-java-format.version>
 	</properties>
 
 	<licenses>
@@ -273,7 +275,34 @@
 				</executions>
 			</plugin>
 
-		</plugins>
+					<!-- spotless: house code formatter (same config as jconsole-booster / druvu-lib-jmxmp /
+			     druvu-lib-fx / druvu-acc-parent). `mvn spotless:apply` reformats; `check` runs in
+			     verify and fails on unformatted code. -->
+			<plugin>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>${spotless-maven-plugin.version}</version>
+				<configuration>
+					<java>
+						<palantirJavaFormat>
+							<version>${palantir-java-format.version}</version>
+							<style>PALANTIR</style>
+							<formatJavadoc>true</formatJavadoc>
+						</palantirJavaFormat>
+						<removeUnusedImports/>
+					</java>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<phase>verify</phase>
+					</execution>
+				</executions>
+			</plugin>
+
+</plugins>
 	</build>
 
 	<profiles>
