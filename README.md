@@ -228,6 +228,16 @@ List<Plugin> plugins = MultiComponentLoader.loadAll(Plugin.class, dependencies);
 MultiComponentLoader.disposeAll(Plugin.class, plugins);
 ```
 
+Loading is strict, disposing is not. `loadAll` fails the whole call if a factory creates a null —
+a half-loaded plugin set at startup is a deployment error worth seeing. `disposeAll` is the shutdown
+path, so it releases everything it can and logs a WARN for whatever it cannot: a component this
+loader never created (or already disposed), and a factory throwing on dispose. One failing plugin
+never leaves the others un-released.
+
+Each component is disposed by **the factory that created it**, so a subset or a reordered list is
+disposed correctly. The returned list holds the components actually disposed — shorter than the
+input when something was skipped.
+
 ### SingletonLoader
 
 Manages global singletons with two-phase initialization — `load` once at startup, `get` everywhere else.

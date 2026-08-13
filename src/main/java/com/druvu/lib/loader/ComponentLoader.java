@@ -56,33 +56,39 @@ public final class ComponentLoader {
         Objects.requireNonNull(dependencies);
 
         synchronized (LOCKS.computeIfAbsent(targetClass, k -> new Object())) {
+            final ComponentFactory<T> componentFactory;
             try {
-                final ComponentFactory<T> componentFactory = createComponentFactory(targetClass);
-                final T result = componentFactory.createComponent(dependencies);
-                if (result == null) {
-                    throw new IllegalStateException(String.format("Factory %s created a null", componentFactory));
-                }
-                return result;
+                componentFactory = createComponentFactory(targetClass);
             } catch (TargetClassNotFoundException e) {
-                try {
-                    return ServiceLoader.load(targetClass).stream()
-                            .map(ServiceLoader.Provider::get)
-                            .findFirst()
-                            .orElseThrow(() -> {
-                                var notFound = new TargetClassNotFoundException(
-                                        "No ComponentFactory or ServiceLoader provider for %s"
-                                                .formatted(targetClass.getName()));
-                                notFound.addSuppressed(e);
-                                return notFound;
-                            });
-                } catch (ServiceConfigurationError sce) {
-                    var notFound = new TargetClassNotFoundException(
-                            "No ComponentFactory or ServiceLoader provider for %s".formatted(targetClass.getName()));
-                    notFound.addSuppressed(e);
-                    throw notFound;
-                }
+                // no factory at all - the target type may still be registered as a plain service.
+                // Only factory lookup is guarded: a TargetClassNotFoundException raised by the component's own
+                // construction is the component's failure, and must not be mistaken for a missing factory.
+                return loadThroughServiceLoader(targetClass, e);
             }
+            final T result = componentFactory.createComponent(dependencies);
+            if (result == null) {
+                throw new IllegalStateException(String.format("Factory %s created a null", componentFactory));
+            }
+            return result;
         }
+    }
+
+    private static <T> T loadThroughServiceLoader(Class<T> targetClass, TargetClassNotFoundException cause) {
+        try {
+            return ServiceLoader.load(targetClass).stream()
+                    .map(ServiceLoader.Provider::get)
+                    .findFirst()
+                    .orElseThrow(() -> notFound(targetClass, cause));
+        } catch (ServiceConfigurationError e) {
+            throw notFound(targetClass, cause);
+        }
+    }
+
+    private static TargetClassNotFoundException notFound(Class<?> targetClass, TargetClassNotFoundException cause) {
+        var notFound = new TargetClassNotFoundException(
+                "No ComponentFactory or ServiceLoader provider for %s".formatted(targetClass.getName()));
+        notFound.addSuppressed(cause);
+        return notFound;
     }
 
     private static <T> ComponentFactory<T> createComponentFactory(Class<T> targetClass) {

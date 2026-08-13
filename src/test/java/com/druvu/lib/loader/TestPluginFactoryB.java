@@ -18,6 +18,12 @@ public class TestPluginFactoryB implements ComponentFactory<TestPlugin> {
     }
 
     @Override
+    public TestPlugin disposeComponent(TestPlugin component) {
+        component.disposedBy(getClass().getSimpleName());
+        return component;
+    }
+
+    @Override
     public Class<TestPlugin> type() {
         return TestPlugin.class;
     }
