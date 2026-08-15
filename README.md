@@ -1,8 +1,9 @@
 # druvu-lib-loader
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.druvu/druvu-lib-loader.svg)](https://central.sonatype.com/artifact/com.druvu/druvu-lib-loader)
+[![Maven Central](https://img.shields.io/maven-central/v/com.druvu/druvu-lib-loader.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/com.druvu/druvu-lib-loader)
+![Java](https://img.shields.io/badge/Java-21-blue)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DenissLarka_druvu-lib-loader&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DenissLarka_druvu-lib-loader)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=DenissLarka_druvu-lib-loader&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=DenissLarka_druvu-lib-loader)
 
 ## Overview
 
