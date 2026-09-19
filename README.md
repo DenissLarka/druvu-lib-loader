@@ -294,9 +294,9 @@ Requires **Java 21 LTS** or later.
 Runtime dependency: the SLF4J API (`org.slf4j`) for logging — bring any binding you like, or none
 (SLF4J falls back to no-op).
 
-### Maven Central (recommended)
+### Maven Central
 
-The artifact is published to Maven Central — no additional repository configuration needed.
+The artifact is on Maven Central — no extra repository, no credentials.
 
 ```xml
 <dependency>
@@ -317,47 +317,6 @@ Gradle (Kotlin DSL):
 ```kotlin
 implementation("com.druvu:druvu-lib-loader:1.1.1")
 ```
-
-### GitHub Packages (alternative)
-
-The artifact is also published to GitHub Packages. Using this channel requires authentication with a GitHub Personal Access Token.
-
-1. Create a GitHub Personal Access Token with the `read:packages` scope at https://github.com/settings/tokens.
-
-2. Add the credentials to `~/.m2/settings.xml`:
-
-   ```xml
-   <settings>
-       <servers>
-           <server>
-               <id>github-druvu-lib-loader</id>
-               <username>YOUR_GITHUB_USERNAME</username>
-               <password>YOUR_PAT</password>
-           </server>
-       </servers>
-   </settings>
-   ```
-
-3. Add the repository to your consumer project's `pom.xml`:
-
-   ```xml
-   <repositories>
-       <repository>
-           <id>github-druvu-lib-loader</id>
-           <url>https://maven.pkg.github.com/DenissLarka/druvu-lib-loader</url>
-       </repository>
-   </repositories>
-   ```
-
-4. Declare the dependency as usual:
-
-   ```xml
-   <dependency>
-       <groupId>com.druvu</groupId>
-       <artifactId>druvu-lib-loader</artifactId>
-       <version>1.1.1</version>
-   </dependency>
-   ```
 
 ### JPMS consumers
 
