@@ -331,5 +331,4 @@ Note: in releases prior to 1.1.0 the module name was `druvu.lib.loader`.
 ## Feedback
 
 - Found a bug or missing a feature? [Open an issue](https://github.com/DenissLarka/druvu-lib-loader/issues/new/choose) — templates provided.
-- Direction input welcome on the pinned issue: [What should druvu-lib-loader do next?](https://github.com/DenissLarka/druvu-lib-loader/issues/28)
 - More druvu libraries and tools: [druvu.com](https://druvu.com)
