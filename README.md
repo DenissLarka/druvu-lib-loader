@@ -1,5 +1,6 @@
 # druvu-lib-loader
 
+[![CI](https://github.com/DenissLarka/druvu-lib-loader/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DenissLarka/druvu-lib-loader/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/com.druvu/druvu-lib-loader.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/com.druvu/druvu-lib-loader)
 ![Java](https://img.shields.io/badge/Java-21-blue)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)

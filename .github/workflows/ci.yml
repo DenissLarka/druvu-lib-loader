@@ -1,0 +1,33 @@
+# Builds and verifies on every push to main and on every pull request.
+# This is the gate that catches breakage (e.g. Renovate dependency bumps) before it lands on main:
+# the publish workflow only runs on release, so without this a red build stays invisible until
+# release time and Renovate PRs carry no status check.
+#
+# The library targets Java 21 (<release>21</release> in pom.xml) but builds on the current JDK,
+# matching druvu-lib-jdbc, druvu-lib-json and druvu-acc-parent. Every dependency resolves from
+# Maven Central, so no registry authentication is wired in.
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          java-version: '25'
+          distribution: 'zulu'
+          cache: 'maven'
+
+      - name: Build and verify
+        run: mvn -B verify
