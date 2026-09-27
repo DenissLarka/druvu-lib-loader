@@ -15,9 +15,6 @@ module com.druvu.lib.loader {
     // as an alternative to registering under ComponentFactory directly
     uses java.util.ServiceLoader.Provider;
 
-    // SLF4J dependency for logging
-    requires org.slf4j;
-
     // Lombok annotation processing (optional at runtime, only needed for compilation)
     requires static lombok;
 }

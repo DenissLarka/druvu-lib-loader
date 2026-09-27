@@ -292,8 +292,9 @@ Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 
 Requires **Java 21 LTS** or later.
 
-Runtime dependency: the SLF4J API (`org.slf4j`) for logging — bring any binding you like, or none
-(SLF4J falls back to no-op).
+No runtime dependencies. The few warnings the loader logs (see `disposeAll`) go through the JDK's
+`System.Logger`, so they land wherever your application routes platform logging — `java.util.logging`
+by default.
 
 ### Maven Central
 
