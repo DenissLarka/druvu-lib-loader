@@ -1,7 +1,8 @@
 /**
  * Module descriptor for druvu-lib-loader - a type-safe component loading library.
  *
- * <p>This module provides a ServiceLoader-based dependency injection framework with singleton management capabilities.
+ * <p>This module provides type-safe component loading over ServiceLoader: factories receive their dependencies at
+ * creation, with fail-fast cardinality and singleton management.
  */
 module com.druvu.lib.loader {
     // Export the main API package for consumers

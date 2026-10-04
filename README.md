@@ -9,7 +9,7 @@
 ## Overview
 
 `druvu-lib-loader` is a type-safe component loading library built on top of Java's `ServiceLoader` mechanism.
-It enables clean separation between API and implementation modules through factories and dependency injection.
+It enables clean separation between API and implementation modules through factories that receive their dependencies at creation.
 Fully compatible with JPMS (Java Platform Module System).
 
 Project page: [druvu.com/projects/druvu-lib-loader](https://druvu.com/projects/druvu-lib-loader.html)
@@ -182,7 +182,7 @@ provides com.myapp.AccBook with com.myapp.csv.CsvAccBookFactory;
 
 The central extension point. Implements `ServiceLoader.Provider<T>` from the JDK. Requires:
 - `type()` — declares which component type this factory produces
-- `createComponent(Dependencies)` — creates a component with injected dependencies
+- `createComponent(Dependencies)` — creates the component from the dependencies it receives
 
 ```java
 public class MyFactory implements ComponentFactory<MyService> {

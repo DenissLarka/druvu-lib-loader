@@ -10,7 +10,7 @@ import java.util.ServiceLoader;
  *
  * <ul>
  *   <li>{@link #type()} — the component type this factory produces, used for factory selection
- *   <li>{@link #createComponent(Dependencies)} — component creation with injected dependencies
+ *   <li>{@link #createComponent(Dependencies)} — component creation from the dependencies it receives
  * </ul>
  *
  * <p>{@link #get()} is provided as a default that delegates to {@code createComponent(new Dependencies())}, enabling

@@ -38,7 +38,7 @@ public final class SingletonLoader {
      * Load a singleton instance with the provided dependencies.
      *
      * @param targetClass the class type to load
-     * @param dependencies the dependencies to inject
+     * @param dependencies the dependencies handed to the factory
      * @param <T> the type parameter
      * @return the loaded singleton instance
      * @throws IllegalStateException if singleton already initialized

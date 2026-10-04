@@ -9,7 +9,7 @@
 	<packaging>jar</packaging>
 
 	<name>DRUVU.COM / LIB / LOADER</name>
-	<description>A type-safe component loading system built on Java ServiceLoader with dependency injection and singleton management</description>
+	<description>Type-safe component loading on Java ServiceLoader: factories receive their dependencies at creation, fail-fast cardinality, singleton management</description>
 	<url>https://github.com/DenissLarka/druvu-lib-loader</url>
 
 	<properties>
