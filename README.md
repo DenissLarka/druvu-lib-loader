@@ -54,7 +54,6 @@ What it adds over the raw pattern:
 **State:** `ComponentLoader` keeps no components and no registry between calls. `Dependencies` is
 built by the caller at the call site and handed to the factory; the only lookup is `ServiceLoader`'s
 own. `MultiComponentLoader` remembers which factory created each component until `disposeAll`.
-`SingletonLoader` is the one deliberate global, opt-in: `load` once at startup, `get` everywhere else.
 
 **Limit:** the compiler checks what goes into `Dependencies`; it cannot check that you supplied
 everything the factory will ask for. A missing dependency fails at `load()`, not at compile time.
@@ -285,18 +284,6 @@ Each component is disposed by **the factory that created it**, so a subset or a 
 disposed correctly. The returned list holds the components actually disposed — shorter than the
 input when something was skipped.
 
-### SingletonLoader
-
-Manages global singletons with two-phase initialization — `load` once at startup, `get` everywhere else.
-
-```java
-// Initialize once at startup (throws if called again for the same type)
-AppConfig config = SingletonLoader.load(AppConfig.class, dependencies);
-
-// Retrieve anywhere in the application
-AppConfig config = SingletonLoader.get(AppConfig.class);
-```
-
 ### Dependencies
 
 Type-safe container for passing dependencies to factories.
@@ -324,7 +311,6 @@ Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 |--------|----------|----------|
 | `ComponentLoader` | Single implementation expected | Fails if multiple factories exist |
 | `MultiComponentLoader` | Plugin systems, multiple implementations | Returns empty list if none found |
-| `SingletonLoader` | Application-wide services | Two-phase init, prevents double initialization |
 
 ## Design Principles
 
