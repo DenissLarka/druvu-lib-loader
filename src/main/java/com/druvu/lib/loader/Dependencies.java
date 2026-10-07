@@ -7,9 +7,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Immutable, type-keyed container for the dependencies handed to a factory. This class is final to prevent
- * subclass finalizer attacks when
- * constructor validation fails.
+ * Immutable, type-keyed container for the dependencies handed to a factory. This class is final to prevent subclass
+ * finalizer attacks when constructor validation fails.
  *
  * @author Deniss Larka on 17 Aug 2025
  */
