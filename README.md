@@ -8,9 +8,11 @@
 
 ## Overview
 
-`druvu-lib-loader` is a type-safe component loading library built on top of Java's `ServiceLoader` mechanism.
-It enables clean separation between API and implementation modules through factories that receive their dependencies at creation.
-Fully compatible with JPMS (Java Platform Module System).
+`ServiceLoader` finds an implementation but cannot pass it a constructor argument. `druvu-lib-loader` is
+the factory that does, written once: the caller hands over typed `Dependencies`, the implementation comes
+out constructed, and two factories for one type are an error instead of a silent pick. Underneath it is
+still `ServiceLoader` and JPMS `provides`/`uses`: no container, no classpath scanning, no annotations.
+Java 21+, class path or module path, no runtime dependencies.
 
 Project page: [druvu.com/projects/druvu-lib-loader](https://druvu.com/projects/druvu-lib-loader.html)
 
@@ -27,9 +29,17 @@ AccBook book = ServiceLoader.load(AccBook.class).findFirst().orElseThrow();
 ((Configurable) book).init(path);
 ```
 
-The usual escape is a hand-written factory SPI — define an `AccBookFactory` interface, register
-*it* as the service, call `factory.create(path)`. That works; after rewriting the same glue in
-project after project, it became this library. What it adds over the raw pattern:
+The usual escape is a hand-written factory SPI: define an `AccBookFactory` interface, register
+*it* as the service, call `factory.create(path)`.
+
+```java
+// A factory interface per component type, registered in place of the implementation
+ServiceLoader<AccBookFactory> factories = ServiceLoader.load(AccBookFactory.class);
+AccBook book = factories.findFirst().orElseThrow().create(path);
+```
+
+That works; after rewriting the same glue in project after project, it became this library.
+What it adds over the raw pattern:
 
 - **Dependencies at creation** — the factory receives type-keyed `Dependencies`; the
   implementation is created valid, with no `init()` phase.
@@ -40,6 +50,15 @@ project after project, it became this library. What it adds over the raw pattern
   `provides`/`uses`: no reflection scanning, no annotations, no container. The
   `AccBook.load(path)` one-liner below is a convention you write once per interface,
   not code generation.
+
+**State:** `ComponentLoader` keeps no components and no registry between calls. `Dependencies` is
+built by the caller at the call site and handed to the factory; the only lookup is `ServiceLoader`'s
+own. `MultiComponentLoader` remembers which factory created each component until `disposeAll`.
+`SingletonLoader` is the one deliberate global, opt-in: `load` once at startup, `get` everywhere else.
+
+**Limit:** the compiler checks what goes into `Dependencies`; it cannot check that you supplied
+everything the factory will ask for. A missing dependency fails at `load()`, not at compile time.
+Call it at startup and you find out at startup.
 
 **When not to use it:** if your implementations are no-arg and unique, plain `ServiceLoader`
 already serves you well (this library discovers such implementations as a fallback anyway — see
@@ -57,9 +76,17 @@ Add a `static load(...)` factory method to the interface itself, so callers need
 
 ```java
 // In your API module (e.g., myapp-api)
+package com.myapp.api;
+
+import java.nio.file.Path;
+import java.util.List;
+
+import com.druvu.lib.loader.ComponentLoader;
+import com.druvu.lib.loader.Dependencies;
+
 public interface AccBook {
     String id();
-    List<Account> accounts();
+    List<String> accountNames();
 
     // Convenience factory — discovers the implementation via ServiceLoader
     static AccBook load(Path path) {
@@ -83,9 +110,18 @@ Dependencies.of(Path.class, path, Config.class, config)
 
 ### Step 2: Implement ComponentFactory (Implementation Module)
 
-In your implementation module (e.g., `myapp-gnucash-xml`), create a factory:
+In your implementation module (e.g., `myapp-gnucash-xml`), create a factory. `GnucashAccBook` is your
+implementation of `AccBook`; its constructor takes the `Path`:
 
 ```java
+package com.myapp.gnucash.io;
+
+import java.nio.file.Path;
+
+import com.druvu.lib.loader.ComponentFactory;
+import com.druvu.lib.loader.Dependencies;
+import com.myapp.api.AccBook;
+
 public class GnucashBookFactory implements ComponentFactory<AccBook> {
 
     @Override
@@ -129,8 +165,17 @@ module myapp.gnucash.xml {
 ### Step 4: Use It
 
 ```java
-AccBook book = AccBook.load(Paths.get("/path/to/file.xml"));
-System.out.println(book.id());
+package com.myapp;
+
+import java.nio.file.Path;
+import com.myapp.api.AccBook;
+
+public class Main {
+    public static void main(String[] args) {
+        AccBook book = AccBook.load(Path.of("/path/to/file.xml"));
+        System.out.println(book.id());
+    }
+}
 ```
 
 The implementation is discovered automatically via `ServiceLoader`. Your application code only depends on the API module.
