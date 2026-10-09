@@ -3,7 +3,6 @@ package com.druvu.lib.loader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.function.Predicate;
 
 /**
@@ -32,7 +31,7 @@ public final class ServiceLoaderExtended {
      * @throws TargetClassNotFoundException if no matching candidate is found
      */
     public static <T> T load(Class<T> targetClass, Predicate<T> candidateChooser) {
-        Iterable<T> serviceLoader = ServiceLoader.load(targetClass);
+        Iterable<T> serviceLoader = ModuleServices.load(targetClass);
         T goodCandidate = null;
         for (T candidate : serviceLoader) {
             if (!candidateChooser.test(candidate)) {
@@ -62,7 +61,7 @@ public final class ServiceLoaderExtended {
      * @return unmodifiable list of all matching candidates (empty if none found)
      */
     public static <T> List<T> loadAll(Class<T> targetClass, Predicate<T> candidateChooser) {
-        Iterable<T> serviceLoader = ServiceLoader.load(targetClass);
+        Iterable<T> serviceLoader = ModuleServices.load(targetClass);
         List<T> candidates = new ArrayList<>();
         for (T candidate : serviceLoader) {
             if (candidateChooser.test(candidate)) {

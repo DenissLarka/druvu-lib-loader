@@ -266,6 +266,11 @@
 				<version>${spotless-maven-plugin.version}</version>
 				<configuration>
 					<java>
+						<includes>
+							<include>src/main/java/**/*.java</include>
+							<include>src/test/java/**/*.java</include>
+							<include>src/test/modules/**/*.java</include>
+						</includes>
 						<palantirJavaFormat>
 							<version>${palantir-java-format.version}</version>
 							<style>PALANTIR</style>

@@ -220,6 +220,13 @@ provides com.myapp.AccBook with com.myapp.csv.CsvAccBookFactory;
 `ComponentLoader` tries `ComponentFactory` first. If none is found, it falls back to
 `ServiceLoader.load(AccBook.class)` automatically.
 
+This works on the class path and, since 1.1.3, on the module path (earlier releases found such a
+registration on the class path only). On the module path the library declares its `uses` of your
+type at run time (`Module.addUses`), so your module needs only the `provides` line above. One
+condition: the interface must be public in a package your module exports, to everyone or
+`to com.druvu.lib.loader`, because the JDK lets a module load only services it can see. A lookup
+the JDK refuses surfaces as the suppressed cause of the `TargetClassNotFoundException`.
+
 ## Core Components
 
 ### ComponentFactory

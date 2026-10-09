@@ -10,6 +10,7 @@ module com.druvu.lib.loader {
 
     // Declare ServiceLoader usage - required for JPMS compliance
     // This tells the module system we'll be loading ComponentFactory implementations
+    // A consumer's own type (the direct fallback) cannot be named here: ModuleServices declares that use at run time
     uses com.druvu.lib.loader.ComponentFactory;
 
     // Allow implementors to register ComponentFactory under the JDK Provider service file

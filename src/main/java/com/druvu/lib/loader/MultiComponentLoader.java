@@ -191,7 +191,7 @@ public final class MultiComponentLoader {
     private static <T> List<ComponentFactory<T>> findAllInProviderRegistry(Class<T> targetClass) {
         try {
             List<ComponentFactory<T>> found = new ArrayList<>();
-            for (ServiceLoader.Provider p : ServiceLoader.load(ServiceLoader.Provider.class)) {
+            for (ServiceLoader.Provider p : ModuleServices.load(ServiceLoader.Provider.class)) {
                 if (p instanceof ComponentFactory<?> cf && targetClass == cf.type()) {
                     found.add((ComponentFactory<T>) cf);
                 }

@@ -31,6 +31,11 @@ import java.util.function.Predicate;
  * ServiceLoader.load(targetClass)}, discovering implementations registered directly under the target type. This path
  * requires no dependency on this library from the implementing side. Dependencies are not available on this path.
  *
+ * <p>On the module path this module declares its use of the target type at run time, so the implementing module needs
+ * only its {@code provides} line. The target type must be public in a package that module exports, to everyone or to
+ * {@code com.druvu.lib.loader}: the JDK lets a module load only services it can see. A lookup the JDK refuses surfaces
+ * as the suppressed cause of the {@link TargetClassNotFoundException}.
+ *
  * <h2>Thread safety</h2>
  *
  * <p>Load and dispose operations synchronize on the target class, making concurrent calls safe.
@@ -75,12 +80,16 @@ public final class ComponentLoader {
 
     private static <T> T loadThroughServiceLoader(Class<T> targetClass, TargetClassNotFoundException cause) {
         try {
-            return ServiceLoader.load(targetClass).stream()
+            return ModuleServices.load(targetClass).stream()
                     .map(ServiceLoader.Provider::get)
                     .findFirst()
                     .orElseThrow(() -> notFound(targetClass, cause));
         } catch (ServiceConfigurationError e) {
-            throw notFound(targetClass, cause);
+            // the JDK refused the lookup (a provider that cannot be instantiated, or on the module path a target type
+            // this module cannot see): keep its reason, it is the one the caller needs
+            final TargetClassNotFoundException notFound = notFound(targetClass, cause);
+            notFound.addSuppressed(e);
+            throw notFound;
         }
     }
 
@@ -109,7 +118,7 @@ public final class ComponentLoader {
     private static <T> Optional<ComponentFactory<T>> findInProviderRegistry(Class<T> targetClass) {
         try {
             ComponentFactory<T> found = null;
-            for (ServiceLoader.Provider p : ServiceLoader.load(ServiceLoader.Provider.class)) {
+            for (ServiceLoader.Provider p : ModuleServices.load(ServiceLoader.Provider.class)) {
                 if (!(p instanceof ComponentFactory<?> cf) || targetClass != cf.type()) {
                     continue;
                 }
