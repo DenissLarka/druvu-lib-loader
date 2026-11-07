@@ -20,6 +20,15 @@ public final class Dependencies {
         this.map = Collections.emptyMap();
     }
 
+    /**
+     * Builds the dependencies from type-value pairs: {@code Path.class, path, Config.class, config, ...}. A null value
+     * registers nothing; the typed {@code of} overloads are the usual way in, this constructor is the unchecked one.
+     *
+     * @param input the pairs, an even number of elements
+     * @throws IllegalArgumentException on an odd length, a key that is not a {@code Class}, or a value that is not an
+     *     instance of its key
+     * @throws IllegalStateException on a type given twice
+     */
     public Dependencies(Object... input) {
         if ((input.length & 1) != 0) { // implicit null check
             throw new IllegalArgumentException("length is odd");
@@ -39,36 +48,126 @@ public final class Dependencies {
         this.map = Map.copyOf(buildingMap);
     }
 
+    /**
+     * No dependencies.
+     *
+     * @return the empty dependencies
+     */
     public static Dependencies of() {
         return new Dependencies();
     }
 
+    /**
+     * One dependency, each keyed by a type; the compiler checks every value against its key.
+     *
+     * @param k1 the first type, the key the factory asks for
+     * @param v1 its value, an instance of that type
+     * @param <T1> the first type
+     * @return the dependencies
+     */
     public static <T1> Dependencies of(Class<T1> k1, T1 v1) {
         return new Dependencies(k1, v1);
     }
 
+    /**
+     * Two dependencies, each keyed by a type; the compiler checks every value against its key.
+     *
+     * @param k1 the first type, the key the factory asks for
+     * @param v1 its value, an instance of that type
+     * @param k2 the second type, the key the factory asks for
+     * @param v2 its value, an instance of that type
+     * @param <T1> the first type
+     * @param <T2> the second type
+     * @return the dependencies
+     */
     public static <T1, T2> Dependencies of(Class<T1> k1, T1 v1, Class<T2> k2, T2 v2) {
         return new Dependencies(k1, v1, k2, v2);
     }
 
+    /**
+     * Three dependencies, each keyed by a type; the compiler checks every value against its key.
+     *
+     * @param k1 the first type, the key the factory asks for
+     * @param v1 its value, an instance of that type
+     * @param k2 the second type, the key the factory asks for
+     * @param v2 its value, an instance of that type
+     * @param k3 the third type, the key the factory asks for
+     * @param v3 its value, an instance of that type
+     * @param <T1> the first type
+     * @param <T2> the second type
+     * @param <T3> the third type
+     * @return the dependencies
+     */
     public static <T1, T2, T3> Dependencies of(Class<T1> k1, T1 v1, Class<T2> k2, T2 v2, Class<T3> k3, T3 v3) {
         return new Dependencies(k1, v1, k2, v2, k3, v3);
     }
 
+    /**
+     * Four dependencies, each keyed by a type; the compiler checks every value against its key.
+     *
+     * @param k1 the first type, the key the factory asks for
+     * @param v1 its value, an instance of that type
+     * @param k2 the second type, the key the factory asks for
+     * @param v2 its value, an instance of that type
+     * @param k3 the third type, the key the factory asks for
+     * @param v3 its value, an instance of that type
+     * @param k4 the fourth type, the key the factory asks for
+     * @param v4 its value, an instance of that type
+     * @param <T1> the first type
+     * @param <T2> the second type
+     * @param <T3> the third type
+     * @param <T4> the fourth type
+     * @return the dependencies
+     */
     public static <T1, T2, T3, T4> Dependencies of(
             Class<T1> k1, T1 v1, Class<T2> k2, T2 v2, Class<T3> k3, T3 v3, Class<T4> k4, T4 v4) {
         return new Dependencies(k1, v1, k2, v2, k3, v3, k4, v4);
     }
 
+    /**
+     * Five dependencies, each keyed by a type; the compiler checks every value against its key.
+     *
+     * @param k1 the first type, the key the factory asks for
+     * @param v1 its value, an instance of that type
+     * @param k2 the second type, the key the factory asks for
+     * @param v2 its value, an instance of that type
+     * @param k3 the third type, the key the factory asks for
+     * @param v3 its value, an instance of that type
+     * @param k4 the fourth type, the key the factory asks for
+     * @param v4 its value, an instance of that type
+     * @param k5 the fifth type, the key the factory asks for
+     * @param v5 its value, an instance of that type
+     * @param <T1> the first type
+     * @param <T2> the second type
+     * @param <T3> the third type
+     * @param <T4> the fourth type
+     * @param <T5> the fifth type
+     * @return the dependencies
+     */
     public static <T1, T2, T3, T4, T5> Dependencies of(
             Class<T1> k1, T1 v1, Class<T2> k2, T2 v2, Class<T3> k3, T3 v3, Class<T4> k4, T4 v4, Class<T5> k5, T5 v5) {
         return new Dependencies(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5);
     }
 
+    /**
+     * Any number of dependencies as type-value pairs, unchecked by the compiler: the rules of
+     * {@link #Dependencies(Object...)}.
+     *
+     * @param objects the pairs, an even number of elements
+     * @return the dependencies
+     */
     public static Dependencies of(Object... objects) {
         return new Dependencies(objects);
     }
 
+    /**
+     * The dependency registered under the type; a factory asks this for what it cannot do without.
+     *
+     * @param dependencyClass the type the dependency was registered under
+     * @param <T> the dependency type
+     * @return the dependency, never {@code null}
+     * @throws IllegalStateException when nothing is registered under the type
+     */
     public <T> T getDependency(Class<T> dependencyClass) {
         final T dependency = dependencyNullable(dependencyClass);
         if (dependency == null) {
@@ -77,6 +176,13 @@ public final class Dependencies {
         return dependency;
     }
 
+    /**
+     * The dependency registered under the type, if any; a factory asks this for what it has a default for.
+     *
+     * @param dependencyClass the type the dependency was registered under
+     * @param <T> the dependency type
+     * @return the dependency, or empty when nothing is registered under the type
+     */
     public <T> Optional<T> getOptionalDependency(Class<T> dependencyClass) {
         return Optional.ofNullable(dependencyNullable(Objects.requireNonNull(dependencyClass)));
     }

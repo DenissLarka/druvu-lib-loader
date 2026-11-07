@@ -14,18 +14,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 /**
- * Loads multiple component instances by discovering all ComponentFactory implementations via ServiceLoader that match
- * the target class. Unlike {@link ComponentLoader}, this loader allows and returns multiple implementations.
+ * Loads every component of a type: the plugin case. Unlike {@link ComponentLoader}, this loader allows and returns
+ * multiple implementations.
  *
- * <p>Factory is a {@link ComponentFactory} capable of creating instances of the desired target class. Factories must be
- * stateless and have a default constructor.
+ * <p>The components come from the {@link ComponentFactory} instances registered for the type, each handed the same
+ * {@link Dependencies}. When no factory is registered, they come from the implementations registered directly under the
+ * type, as for a plain {@link ServiceLoader}; those receive no dependencies, the JDK constructs them (the conditions of
+ * a direct registration: {@link ComponentLoader}). Factories must be stateless and have a public no-arg constructor.
  *
  * <h2>Loading is strict, disposing is not</h2>
  *
- * <p>{@link #loadAll} fails the whole call when a factory creates a null component: a half loaded plugin set at startup
- * is a deployment error worth seeing. {@link #disposeAll} usually runs at shutdown instead, so it disposes every
- * component it can and logs a WARN for each one it cannot, rather than letting a single failing plugin leave the others
- * un-released.
+ * <p>{@link #loadAll} fails the whole call when a factory creates a null component or a direct registration cannot be
+ * instantiated: a half loaded plugin set at startup is a deployment error worth seeing. {@link #disposeAll} usually
+ * runs at shutdown instead, so it disposes every component it can and logs a WARN for each one it cannot, rather than
+ * letting a single failing plugin leave the others un-released.
  *
  * @author Deniss Larka on 15 Nov 2025
  */
@@ -36,13 +38,37 @@ public final class MultiComponentLoader {
     private static final ConcurrentHashMap<Class<?>, Object> LOCKS = new ConcurrentHashMap<>();
 
     /**
-     * Remembers which factory created which component, so {@link #disposeAll} can hand every component back to its own
-     * creator, whatever order or subset it is given - pairing by position silently disposes a component with a foreign
-     * factory. Keyed by identity: two equal components are still two components. An entry lives until the component is
-     * disposed, so a caller loading without ever disposing keeps them alive.
+     * Remembers who created which component, so {@link #disposeAll} can hand every component back to its own creator,
+     * whatever order or subset it is given - pairing by position silently disposes a component with a foreign factory.
+     * Keyed by identity: two equal components are still two components. An entry lives until the component is disposed,
+     * so a caller loading without ever disposing keeps them alive.
      */
-    private static final Map<Object, ComponentFactory<?>> CREATORS =
-            Collections.synchronizedMap(new IdentityHashMap<>());
+    private static final Map<Object, Creator> CREATORS = Collections.synchronizedMap(new IdentityHashMap<>());
+
+    /**
+     * Who made a component: its factory, or the JDK's {@link ServiceLoader} for a direct registration, which has
+     * nothing to dispose the component through and hands it back as is.
+     */
+    private record Creator(ComponentFactory<?> factory) {
+
+        static final Creator SERVICE_LOADER = new Creator(null);
+
+        // unchecked: a factory in this record produced the very instance it is asked to dispose, so it is a
+        // ComponentFactory<T> by construction
+        @SuppressWarnings("unchecked")
+        <T> T dispose(T component) {
+            if (factory == null) {
+                return component;
+            }
+            return ((ComponentFactory<T>) factory).disposeComponent(component);
+        }
+
+        String name() {
+            return factory == null
+                    ? ServiceLoader.class.getName()
+                    : factory.getClass().getName();
+        }
+    }
 
     private MultiComponentLoader() {}
 
@@ -51,9 +77,10 @@ public final class MultiComponentLoader {
      *
      * @param targetClass the component type to load
      * @param <T> the type parameter
-     * @return unmodifiable list of all component instances (empty if no factories found)
+     * @return unmodifiable list of all component instances (empty if nothing is registered)
      * @throws NullPointerException if targetClass is null
      * @throws IllegalStateException if any factory creates a null component
+     * @throws ServiceConfigurationError if a direct registration cannot be instantiated
      */
     public static <T> List<T> loadAll(final Class<T> targetClass) {
         return loadAll(targetClass, Dependencies.of());
@@ -63,11 +90,12 @@ public final class MultiComponentLoader {
      * Load all instances of the target class with the given dependencies.
      *
      * @param targetClass the component type to load
-     * @param dependencies dependencies to pass to each factory
+     * @param dependencies dependencies to pass to each factory; a direct registration receives none
      * @param <T> the type parameter
-     * @return unmodifiable list of all component instances (empty if no factories found)
+     * @return unmodifiable list of all component instances (empty if nothing is registered)
      * @throws NullPointerException if targetClass or dependencies is null
      * @throws IllegalStateException if any factory creates a null component
+     * @throws ServiceConfigurationError if a direct registration cannot be instantiated
      */
     public static <T> List<T> loadAll(final Class<T> targetClass, Dependencies dependencies) {
 
@@ -75,24 +103,26 @@ public final class MultiComponentLoader {
         Objects.requireNonNull(dependencies, "dependencies cannot be null");
 
         synchronized (lockOf(targetClass)) {
-            final List<ComponentFactory<T>> componentFactories = createComponentFactories(targetClass);
-            final List<T> results = new ArrayList<>(componentFactories.size());
-
-            for (ComponentFactory<T> factory : componentFactories) {
+            final List<ComponentFactory<T>> factories = factoriesOf(targetClass);
+            if (factories.isEmpty()) {
+                return loadDirectly(targetClass);
+            }
+            final List<T> results = new ArrayList<>(factories.size());
+            for (ComponentFactory<T> factory : factories) {
                 final T component = factory.createComponent(dependencies);
                 if (component == null) {
                     throw new IllegalStateException(String.format("Factory %s created a null component", factory));
                 }
-                CREATORS.put(component, factory);
+                CREATORS.put(component, new Creator(factory));
                 results.add(component);
             }
-
             return Collections.unmodifiableList(results);
         }
     }
 
     /**
-     * Dispose the given components, each through the factory that created it.
+     * Dispose the given components, each through its creator. A component from a direct registration is handed back as
+     * is, there is no factory to release it.
      *
      * <p>Components this loader does not know about - never loaded here, or already disposed - and factories failing to
      * dispose are logged as a WARN and skipped. One bad component never stops the others from being released, which is
@@ -113,7 +143,7 @@ public final class MultiComponentLoader {
             int skipped = 0;
 
             for (T instance : instances) {
-                final ComponentFactory<T> creator = takeCreatorOf(instance);
+                final Creator creator = takeCreatorOf(instance);
                 if (creator == null) {
                     skipped++;
                     LOG.log(
@@ -140,15 +170,34 @@ public final class MultiComponentLoader {
         }
     }
 
-    /** @return 1 when the component was skipped, 0 when it was disposed and collected */
-    private static <T> int disposeOne(ComponentFactory<T> creator, T instance, List<T> disposedComponents) {
+    /** The implementations registered directly under the type, constructed by the JDK. */
+    private static <T> List<T> loadDirectly(Class<T> targetClass) {
+        final ServiceLoader<T> registrations;
         try {
-            final T disposed = creator.disposeComponent(instance);
+            registrations = ModuleServices.load(targetClass);
+        } catch (ServiceConfigurationError e) {
+            // the JDK refuses the lookup itself: on the module path, a type this module cannot see. No direct
+            // registration can be loaded for it, which is an empty plugin set, not a failure.
+            LOG.log(Level.DEBUG, () -> "No direct registrations for " + targetClass.getName() + ": " + e.getMessage());
+            return List.of();
+        }
+        final List<T> results = new ArrayList<>();
+        // a registration that cannot be instantiated throws here, as a deployment error should
+        for (T component : registrations) {
+            CREATORS.put(component, Creator.SERVICE_LOADER);
+            results.add(component);
+        }
+        return Collections.unmodifiableList(results);
+    }
+
+    /** @return 1 when the component was skipped, 0 when it was disposed and collected */
+    private static <T> int disposeOne(Creator creator, T instance, List<T> disposedComponents) {
+        try {
+            final T disposed = creator.dispose(instance);
             if (disposed == null) {
                 LOG.log(
                         Level.WARNING,
-                        () -> "Factory " + creator.getClass().getName() + " returned a null disposing "
-                                + describe(instance));
+                        () -> "Factory " + creator.name() + " returned a null disposing " + describe(instance));
                 return 1;
             }
             disposedComponents.add(disposed);
@@ -156,7 +205,7 @@ public final class MultiComponentLoader {
         } catch (RuntimeException e) {
             LOG.log(
                     Level.WARNING,
-                    "Factory " + creator.getClass().getName() + " failed to dispose " + describe(instance)
+                    "Factory " + creator.name() + " failed to dispose " + describe(instance)
                             + ", going on with the remaining components",
                     e);
             return 1;
@@ -167,39 +216,19 @@ public final class MultiComponentLoader {
         return LOCKS.computeIfAbsent(targetClass, key -> new Object());
     }
 
-    // unchecked: CREATORS holds the very factory that produced this instance, so it is a ComponentFactory<T> by
-    // construction. Null instances are tolerated on purpose, the caller gets a WARN rather than an exception.
-    @SuppressWarnings("unchecked")
-    private static <T> ComponentFactory<T> takeCreatorOf(T instance) {
+    /** Null instances are tolerated on purpose, the caller gets a WARN rather than an exception. */
+    private static Creator takeCreatorOf(Object instance) {
         if (instance == null) {
             return null;
         }
-        return (ComponentFactory<T>) CREATORS.remove(instance);
+        return CREATORS.remove(instance);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> List<ComponentFactory<T>> createComponentFactories(Class<T> targetClass) {
-        final Predicate<ComponentFactory> candidateChooser = factory -> targetClass == factory.type();
-        List<ComponentFactory> rawFactories = ServiceLoaderExtended.loadAll(ComponentFactory.class, candidateChooser);
-        if (!rawFactories.isEmpty()) {
-            return (List<ComponentFactory<T>>) (List<?>) rawFactories;
-        }
-        return findAllInProviderRegistry(targetClass);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static <T> List<ComponentFactory<T>> findAllInProviderRegistry(Class<T> targetClass) {
-        try {
-            List<ComponentFactory<T>> found = new ArrayList<>();
-            for (ServiceLoader.Provider p : ModuleServices.load(ServiceLoader.Provider.class)) {
-                if (p instanceof ComponentFactory<?> cf && targetClass == cf.type()) {
-                    found.add((ComponentFactory<T>) cf);
-                }
-            }
-            return Collections.unmodifiableList(found);
-        } catch (ServiceConfigurationError e) {
-            return Collections.emptyList();
-        }
+    private static <T> List<ComponentFactory<T>> factoriesOf(Class<T> targetClass) {
+        final Predicate<ComponentFactory> producesTheType = factory -> targetClass == factory.type();
+        final List<ComponentFactory> factories = ServiceLoaderExtended.loadAll(ComponentFactory.class, producesTheType);
+        return (List<ComponentFactory<T>>) (List<?>) factories;
     }
 
     private static String describe(Object instance) {

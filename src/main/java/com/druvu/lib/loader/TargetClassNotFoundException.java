@@ -10,6 +10,7 @@ package com.druvu.lib.loader;
  * @see ComponentLoader
  */
 public class TargetClassNotFoundException extends RuntimeException {
+    /** @param message which type was looked for; the lookups that failed travel along as suppressed exceptions */
     public TargetClassNotFoundException(String message) {
         super(message);
     }

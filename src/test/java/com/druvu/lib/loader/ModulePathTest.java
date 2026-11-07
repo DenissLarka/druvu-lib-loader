@@ -20,24 +20,25 @@ import javax.tools.ToolProvider;
 import org.testng.annotations.Test;
 
 /**
- * Proves every registration style on the module path: the consumer module under {@code src/test/modules} is compiled
- * against the library's classes and launched in its own JVM with {@code --module-path}. The suite itself runs on the
- * class path, where the JDK's {@code uses} check does not exist, so no other test here can catch what this one catches.
+ * Proves every registration way on the module path: the consumer modules under {@code src/test/modules} are compiled
+ * against the library's classes and launched in their own JVM with {@code --module-path}. The API and the app are one
+ * module; the implementation module {@code com.myapp.plugins} is required by nobody and reaches the module graph
+ * through the API's {@code uses} lines only. The suite itself runs on the class path, where neither the JDK's
+ * {@code uses} check nor the module graph exists, so no other test here can catch what this one catches.
  */
 public class ModulePathTest {
 
-    private static final String MODULE = "com.myapp.modtest";
+    private static final String APP_MODULE = "com.myapp.modtest";
     private static final String MAIN = "com.myapp.Main";
 
     @Test(timeOut = 120_000)
-    public void everyRegistrationStyleLoadsOnTheModulePath() throws Exception {
+    public void everyRegistrationWayLoadsOnTheModulePath() throws Exception {
         Path libraryClasses = libraryClasses();
-        Path fixtureSources =
-                libraryClasses.resolve("../../src/test/modules").normalize().resolve(MODULE);
+        Path fixtureSources = libraryClasses.resolve("../../src/test/modules").normalize();
         Path workDir = Files.createTempDirectory("druvu-lib-loader-modtest");
         try {
             Path modules = workDir.resolve("modules");
-            compile(fixtureSources, libraryClasses, modules.resolve(MODULE));
+            compile(fixtureSources, libraryClasses, modules);
             Run run = launch(libraryClasses, modules, workDir.resolve("stderr.txt"));
 
             assertThat(run.exitCode())
@@ -46,9 +47,13 @@ public class ModulePathTest {
             List<String> lines = run.stdout().lines().toList();
             assertThat(lines)
                     .startsWith(
-                            "tier1 com.myapp.csv.CsvGreeter",
-                            "tier2 com.myapp.csv.CsvPrinter",
-                            "tier3 com.myapp.csv.CsvAccBook",
+                            "factory com.myapp.csv.CsvGreeter",
+                            "direct com.myapp.csv.CsvAccBook",
+                            "direct-factory com.myapp.plugins.XmlBook books.xml",
+                            "direct-factories com.myapp.plugins.CsvExporter csv to out, com.myapp.plugins.PdfExporter pdf to out");
+            assertThat(lines.get(4)).startsWith("duplicate refused: More than one");
+            assertThat(lines.get(5))
+                    .isEqualTo(
                             "hidden refused: No ComponentFactory or ServiceLoader provider for com.myapp.internal.Hidden");
             assertThat(lines)
                     .anySatisfy(line -> assertThat(line)
@@ -72,6 +77,7 @@ public class ModulePathTest {
         return classes;
     }
 
+    /** Compiles every module under the fixture root into {@code output/<module>}, the library on the module path. */
     private static void compile(Path sources, Path modulePath, Path output) throws IOException {
         JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         assertThat(javac).as("the system Java compiler (a JDK runs this suite)").isNotNull();
@@ -84,7 +90,10 @@ public class ModulePathTest {
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         try (StandardJavaFileManager fileManager =
                 javac.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8)) {
-            List<String> options = List.of("--module-path", modulePath.toString(), "-d", output.toString());
+            List<String> options = List.of(
+                    "--module-path", modulePath.toString(),
+                    "--module-source-path", sources.toString(),
+                    "-d", output.toString());
             Boolean compiled = javac.getTask(
                             null,
                             fileManager,
@@ -106,7 +115,7 @@ public class ModulePathTest {
                 .command()
                 .orElse(Path.of(System.getProperty("java.home"), "bin", "java").toString());
         String modulePath = libraryClasses + File.pathSeparator + modules;
-        Process process = new ProcessBuilder(java, "--module-path", modulePath, "--module", MODULE + "/" + MAIN)
+        Process process = new ProcessBuilder(java, "--module-path", modulePath, "--module", APP_MODULE + "/" + MAIN)
                 .redirectError(stderrFile.toFile())
                 .start();
         String stdout = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
