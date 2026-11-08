@@ -293,9 +293,7 @@
 						<extensions>true</extensions>
 						<configuration>
 							<publishingServerId>central</publishingServerId>
-							<tokenAuth>true</tokenAuth>
 							<checksums>required</checksums>
-							<skipPublishing>false</skipPublishing>
 						</configuration>
 					</plugin>
 				</plugins>
