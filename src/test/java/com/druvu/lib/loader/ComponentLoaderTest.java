@@ -1,55 +1,114 @@
 package com.druvu.lib.loader;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.nio.file.Path;
+import java.util.ServiceConfigurationError;
 import org.testng.annotations.Test;
 
+/** ComponentLoader on the class path: a factory, a direct registration, and what each refuses. */
 public class ComponentLoaderTest {
 
-    @Test(expectedExceptions = NullPointerException.class)
-    public void testCreate_WithNullTargetClass_ThrowsNullPointerException() {
-        Dependencies dependencies = createDefaultDependencies();
-        ComponentLoader.load(null, dependencies);
+    @Test
+    public void testLoad_WithOneFactory_CreatesThroughIt() {
+        LonePlugin plugin = ComponentLoader.load(LonePlugin.class);
+
+        assertThat(plugin).isNotNull();
     }
 
-    @Test(expectedExceptions = NullPointerException.class)
-    public void testCreate_WithNullDependencies_ThrowsNullPointerException() {
-        ComponentLoader.load(String.class, null);
+    @Test
+    public void testLoad_WithSeveralFactories_Refuses() {
+        // TestPlugin has three factories registered: one instance is not an answer
+        assertThatThrownBy(() -> ComponentLoader.load(TestPlugin.class))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("More than one");
     }
 
-    @Test(expectedExceptions = TargetClassNotFoundException.class)
-    public void testCreate_WhenFactoryCreatesNull_ThrowsIllegalStateException() {
-        Dependencies dependencies = createDefaultDependencies();
-        ComponentLoader.load(FakeComponent.class, dependencies);
+    @Test
+    public void testLoad_WithADirectRegistration_CreatesThroughTheJdk() {
+        // the dependencies go nowhere on this way: the JDK constructs the object
+        DirectPlugin plugin = ComponentLoader.load(DirectPlugin.class, Dependencies.of(String.class, "unused"));
+
+        assertThat(plugin).isInstanceOf(DirectPluginImpl.class);
     }
 
-    @Test(expectedExceptions = TargetClassNotFoundException.class)
-    public void testCreate_WhenFactoryNotFound_ThrowsTargetClassNotFoundException() {
-        Dependencies dependencies = createDefaultDependencies();
-        ComponentLoader.load(Integer.class, dependencies);
+    @Test
+    public void testLoad_WithAnApiOwnedFactory_CreatesWithTheArgument() {
+        // the README's recipe: the factory registered under Ledger$Factory, no library type on its side; the JDK
+        // constructs the factory, the caller's path reaches the ledger
+        Ledger ledger = ComponentLoader.load(Ledger.Factory.class).create(Path.of("ledger.csv"));
+
+        assertThat(ledger).isInstanceOf(FileLedger.class);
+        assertThat(ledger.storage()).isEqualTo("ledger.csv");
     }
 
-    private Dependencies createDefaultDependencies() {
-        // Create default Dependencies object
-        return new Dependencies();
+    @Test
+    public void testLoad_WithTwoDirectRegistrations_Refuses() {
+        assertThatThrownBy(() -> ComponentLoader.load(TwiceRegistered.class))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("More than one");
     }
 
-    private static class FakeComponent {
-        // Dummy class for negative test cases
+    @Test
+    public void testLoad_WhenNothingIsRegistered_ThrowsTargetClassNotFound() {
+        assertThatThrownBy(() -> ComponentLoader.load(Integer.class))
+                .isInstanceOf(TargetClassNotFoundException.class)
+                .hasMessageContaining(Integer.class.getName());
     }
 
-    private static class ServiceLoaderExtendedStub implements ComponentFactory {
-        @Override
-        public Class type() {
-            return FakeComponent.class;
-        }
+    @Test
+    public void testLoad_WhenTheFactoryCreatesNull_ThrowsIllegalState() {
+        assertThatThrownBy(() -> ComponentLoader.load(NullComponent.class))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("created a null");
+    }
 
-        @Override
-        public Object get() {
-            return null;
-        }
+    @Test
+    public void testLoad_WithNullTargetClass_ThrowsNullPointerException() {
+        assertThatThrownBy(() -> ComponentLoader.load(null, Dependencies.of()))
+                .isInstanceOf(NullPointerException.class);
+    }
 
-        @Override
-        public Object createComponent(Dependencies dependencies) {
-            return null; // Simulate an invalid factory
+    @Test
+    public void testLoad_WithNullDependencies_ThrowsNullPointerException() {
+        assertThatThrownBy(() -> ComponentLoader.load(String.class, null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    public void testDispose_WithAFactory_HandsTheComponentToIt() {
+        LonePlugin plugin = ComponentLoader.load(LonePlugin.class);
+
+        assertThat(ComponentLoader.dispose(LonePlugin.class, plugin)).isSameAs(plugin);
+    }
+
+    @Test
+    public void testDispose_WithADirectRegistration_HandsTheComponentBackAsIs() {
+        DirectPlugin plugin = ComponentLoader.load(DirectPlugin.class);
+
+        assertThat(ComponentLoader.dispose(DirectPlugin.class, plugin)).isSameAs(plugin);
+    }
+
+    @Test
+    public void testLoad_WithABrokenDirectRegistration_ThrowsTheJdkError() {
+        // the registration exists but cannot be instantiated: a deployment error, reported as the JDK's own, not as
+        // "not found"
+        assertThatThrownBy(() -> ComponentLoader.load(BrokenDirect.class))
+                .isInstanceOf(ServiceConfigurationError.class)
+                .hasMessageContaining("could not be instantiated");
+    }
+
+    @Test
+    public void testLoad_WithADirectRegistration_WarnsWhenDependenciesAreHandedOver() {
+        // the JDK constructs a direct registration, so dependencies handed over reach nothing: almost always a mistake
+        try (LogCapture log = new LogCapture(ComponentLoader.class)) {
+            ComponentLoader.load(DirectPlugin.class, Dependencies.of(String.class, "goes nowhere"));
+
+            assertThat(log.warnings())
+                    .singleElement()
+                    .asString()
+                    .contains(DirectPlugin.class.getName())
+                    .contains(String.class.getName());
         }
     }
 }

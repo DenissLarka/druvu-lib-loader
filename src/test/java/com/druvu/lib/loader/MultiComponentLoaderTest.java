@@ -71,9 +71,9 @@ public class MultiComponentLoaderTest {
     }
 
     @Test
-    public void testLoadAll_WithSingletonClass_ReturnsSingleInstance() {
-        // When: Loading MySingleton (only one factory registered)
-        List<MySingleton> singletons = MultiComponentLoader.loadAll(MySingleton.class);
+    public void testLoadAll_WithOneFactory_ReturnsOneInstance() {
+        // When: Loading LonePlugin (only one factory registered)
+        List<LonePlugin> singletons = MultiComponentLoader.loadAll(LonePlugin.class);
 
         // Then: Should return list with one instance
         assertThat(singletons).hasSize(1);
@@ -216,5 +216,55 @@ public class MultiComponentLoaderTest {
                 .filter(plugin -> name.equals(plugin.getName()))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    @Test
+    public void testLoadAll_WithDirectRegistrations_TakesThemAll() {
+        // When: Loading a type with two direct registrations and no factory; the dependencies go nowhere on this way
+        List<TwiceRegistered> both =
+                MultiComponentLoader.loadAll(TwiceRegistered.class, Dependencies.of(String.class, "unused"));
+
+        // Then: Both arrive, constructed by the JDK
+        assertThat(both).extracting(TwiceRegistered::name).containsExactlyInAnyOrder("A", "B");
+    }
+
+    @Test
+    public void testDisposeAll_WithDirectRegistrations_HandsThemBackAsIs() {
+        // Given: Components from direct registrations
+        List<TwiceRegistered> both = MultiComponentLoader.loadAll(TwiceRegistered.class);
+
+        // When: Disposing them
+        List<TwiceRegistered> disposed = MultiComponentLoader.disposeAll(TwiceRegistered.class, both);
+
+        // Then: Nothing is skipped: there is no factory to release them, so they come back as they are
+        assertThat(disposed).isEqualTo(both);
+    }
+
+    @Test
+    public void testLoadAll_WhenAFactoryFails_ReleasesWhatWasCreatedBefore() {
+        // Given: two factories for HalfLoaded, the sound one registered first, the other creating a null
+        HalfLoaded.SoundFactory.DISPOSED.clear();
+
+        // When: Loading the set
+        assertThatThrownBy(() -> MultiComponentLoader.loadAll(HalfLoaded.class))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("created a null");
+
+        // Then: The component created before the failure went back to its factory
+        assertThat(HalfLoaded.SoundFactory.DISPOSED).singleElement().isInstanceOf(HalfLoaded.Sound.class);
+    }
+
+    @Test
+    public void testLoadAll_WithDirectRegistrations_WarnsWhenDependenciesAreHandedOver() {
+        // the JDK constructs direct registrations, so dependencies handed over reach nothing: almost always a mistake
+        try (LogCapture log = new LogCapture(MultiComponentLoader.class)) {
+            MultiComponentLoader.loadAll(TwiceRegistered.class, Dependencies.of(String.class, "goes nowhere"));
+
+            assertThat(log.warnings())
+                    .singleElement()
+                    .asString()
+                    .contains(TwiceRegistered.class.getName())
+                    .contains(String.class.getName());
+        }
     }
 }

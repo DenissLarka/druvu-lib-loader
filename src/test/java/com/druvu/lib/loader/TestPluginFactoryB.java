@@ -8,13 +8,8 @@ package com.druvu.lib.loader;
 public class TestPluginFactoryB implements ComponentFactory<TestPlugin> {
 
     @Override
-    public TestPlugin get() {
-        return new TestPluginB();
-    }
-
-    @Override
     public TestPlugin createComponent(Dependencies dependencies) {
-        return get();
+        return new TestPluginB();
     }
 
     @Override

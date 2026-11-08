@@ -1,143 +1,97 @@
 package com.druvu.lib.loader;
 
-import java.lang.constant.Constable;
-import java.lang.constant.ConstantDesc;
-import java.util.Optional;
-import org.testng.Assert;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.nio.file.Path;
 import org.testng.annotations.Test;
 
+/** Dependencies: a type-keyed container, exact types only, a wrong pair refused where it is written. */
 public class DependenciesTest {
 
     @Test
-    public void testDependencyInheritance() {
-
-        Dependencies dependencies = Dependencies.of(TestClassChild.class, new TestClassChild());
-
-        TestClassChild dependency1 = dependencies.getDependency(TestClassChild.class);
-        Assert.assertNotNull(dependency1);
-
-        Optional<TestClassParent> dependency2 = dependencies.getOptionalDependency(TestClassParent.class);
-        Assert.assertTrue(dependency2.isEmpty());
-    }
-
-    @Test
-    public void testDependencyInheritanceBad() {
-
-        final TestClassChild instance1 = new TestClassChild();
-        final TestClassSecondChild instance2 = new TestClassSecondChild();
-
-        try {
-            Dependencies.of(TestClassChild.class, instance1, TestClassSecondChild.class, instance2);
-        } catch (IllegalStateException e) {
-            Assert.assertTrue(e.getMessage().contains("Already registered"));
-        }
-    }
-
-    @Test
-    public void testDependencyInterfaces() {
-
-        final TestInterfaceImpl instance = new TestInterfaceImpl();
-        Dependencies dependencies = Dependencies.of(TestInterfaceImpl.class, instance);
-
-        TestInterfaceImpl dependency1 = dependencies.getDependency(TestInterfaceImpl.class);
-        Assert.assertEquals(dependency1, instance);
-
-        Optional<TestInterface> dependency2 = dependencies.getOptionalDependency(TestInterface.class);
-        Assert.assertTrue(dependency2.isEmpty());
-    }
-
-    @Test
-    public void testDependencyInterfacesBad() {
-
-        final TestInterfaceImpl instance1 = new TestInterfaceImpl();
-        final TestInterfaceSecondImpl instance2 = new TestInterfaceSecondImpl();
-
-        try {
-            Dependencies.of(TestInterfaceImpl.class, instance1, TestInterfaceSecondImpl.class, instance2);
-        } catch (IllegalStateException e) {
-            Assert.assertTrue(e.getMessage().contains("Already registered"));
-        }
-    }
-
-    /*
-     * internal java interfaces should not be included
-     */
-    @Test
-    public void testDependencyJavaInheritance() {
-
-        Dependencies dependencies = Dependencies.of(String.class, "test");
-
-        String string = dependencies.getDependency(String.class);
-        Assert.assertNotNull(string);
-
-        try {
-            dependencies.getDependency(Comparable.class);
-            Assert.fail("Expected an IllegalStateException to be thrown");
-        } catch (IllegalStateException e) {
-            Assert.assertTrue(e.getMessage().contains("Dependency not found"));
-        }
-
-        try {
-            dependencies.getDependency(Constable.class);
-            Assert.fail("Expected an IllegalStateException to be thrown");
-        } catch (IllegalStateException e) {
-            Assert.assertTrue(e.getMessage().contains("Dependency not found"));
-        }
-
-        try {
-            dependencies.getDependency(ConstantDesc.class);
-            Assert.fail("Expected an IllegalStateException to be thrown");
-        } catch (IllegalStateException e) {
-            Assert.assertTrue(e.getMessage().contains("Dependency not found"));
-        }
-    }
-
-    @Test
-    public void testGetDependency() {
+    public void testOf_WithTypedPairs_FindsEachByItsType() {
         Dependencies dependencies = Dependencies.of(String.class, "test", Integer.class, 1, Double.class, 2.0);
 
-        String stringDependency = dependencies.getDependency(String.class);
-        Assert.assertEquals(stringDependency, "test");
-
-        Integer integerDependency = dependencies.getDependency(Integer.class);
-        Assert.assertEquals(integerDependency.intValue(), 1);
-
-        Double doubleDependency = dependencies.getDependency(Double.class);
-        Assert.assertEquals(doubleDependency.doubleValue(), 2.0);
-
-        try {
-            dependencies.getDependency(Long.class);
-            Assert.fail("Expected an IllegalArgumentException to be thrown");
-        } catch (IllegalStateException e) {
-            Assert.assertTrue(e.getMessage().contains("Dependency not found"));
-        }
+        assertThat(dependencies.getDependency(String.class)).isEqualTo("test");
+        assertThat(dependencies.getDependency(Integer.class)).isEqualTo(1);
+        assertThat(dependencies.getDependency(Double.class)).isEqualTo(2.0);
     }
 
     @Test
-    public void testGetOptionalDependency() {
-        Dependencies dependencies = Dependencies.of(String.class, "test", Integer.class, 1);
+    public void testGetDependency_WhenMissing_ThrowsIllegalState() {
+        Dependencies dependencies = Dependencies.of(String.class, "test");
 
-        Optional<String> stringDependency = dependencies.getOptionalDependency(String.class);
-        Assert.assertTrue(stringDependency.isPresent());
-        Assert.assertEquals(stringDependency.get(), "test");
-
-        Optional<Integer> integerDependency = dependencies.getOptionalDependency(Integer.class);
-        Assert.assertTrue(integerDependency.isPresent());
-        Assert.assertEquals(integerDependency.get().intValue(), 1);
-
-        Optional<Double> nonExistentDependency = dependencies.getOptionalDependency(Double.class);
-        Assert.assertFalse(nonExistentDependency.isPresent());
+        assertThatThrownBy(() -> dependencies.getDependency(Long.class))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Dependency not found");
     }
 
-    public class TestClassParent {}
+    @Test
+    public void testGetOptionalDependency_PresentOrEmpty() {
+        Dependencies dependencies = Dependencies.of(String.class, "test");
 
-    public class TestClassSecondChild extends TestClassParent {}
+        assertThat(dependencies.getOptionalDependency(String.class)).contains("test");
+        assertThat(dependencies.getOptionalDependency(Integer.class)).isEmpty();
+    }
 
-    public class TestClassChild extends TestClassParent {}
+    @Test
+    public void testGetDependency_ByASupertype_FindsNothing() {
+        // the key is the exact type given: neither the parent class nor an implemented interface answers
+        Dependencies dependencies = Dependencies.of(Child.class, new Child(), String.class, "test");
 
-    public interface TestInterface {}
+        assertThat(dependencies.getOptionalDependency(Parent.class)).isEmpty();
+        assertThat(dependencies.getOptionalDependency(Marker.class)).isEmpty();
+        assertThat(dependencies.getOptionalDependency(CharSequence.class)).isEmpty();
+    }
 
-    public class TestInterfaceImpl implements TestInterface {}
+    @Test
+    public void testOf_WithATypeGivenTwice_Refuses() {
+        assertThatThrownBy(() -> Dependencies.of(String.class, "one", String.class, "two"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Already registered");
+    }
 
-    public class TestInterfaceSecondImpl implements TestInterface {}
+    @Test
+    public void testOf_WithANullValue_Refuses() {
+        // a null could never be asked for later; the mistake is at this call site, so it fails here
+        assertThatThrownBy(() -> Dependencies.of(Path.class, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(Path.class.getName());
+    }
+
+    @Test
+    public void testOf_Unchecked_WithAValueOfAnotherType_Refuses() {
+        assertThatThrownBy(() -> Dependencies.of((Object) String.class, 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not of type");
+    }
+
+    @Test
+    public void testOf_Unchecked_WithAnOddCount_Refuses() {
+        assertThatThrownBy(() -> Dependencies.of(String.class, "test", Integer.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("odd");
+    }
+
+    @Test
+    public void testOf_Unchecked_WithAKeyThatIsNoClass_Refuses() {
+        assertThatThrownBy(() -> Dependencies.of("not a class", "test"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not of type Class");
+    }
+
+    @Test
+    public void testToString_NamesTheTypesNotTheValues() {
+        // a value may be a credential or a connection: what gets logged is which types were handed over
+        Dependencies dependencies = Dependencies.of(String.class, "s3cret");
+
+        assertThat(dependencies.toString()).contains(String.class.getName()).doesNotContain("s3cret");
+    }
+
+    static class Parent {}
+
+    static class Child extends Parent implements Marker {}
+
+    interface Marker {}
 }
