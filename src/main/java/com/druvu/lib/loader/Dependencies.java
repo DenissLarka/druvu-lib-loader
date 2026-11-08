@@ -1,51 +1,26 @@
 package com.druvu.lib.loader;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
- * Immutable, type-keyed container for the dependencies handed to a factory. This class is final to prevent subclass
- * finalizer attacks when constructor validation fails.
+ * Immutable, type-keyed container for the dependencies handed to a factory: the key is the exact type given, a
+ * supertype or an implemented interface finds nothing. Built through the {@code of} overloads, which refuse a wrong
+ * pair where it is written.
  *
  * @author Deniss Larka on 17 Aug 2025
  */
 public final class Dependencies {
 
+    private static final Dependencies NONE = new Dependencies(Map.of());
+
     private final Map<Class<?>, Object> map;
 
-    private Dependencies() {
-        this.map = Collections.emptyMap();
-    }
-
-    /**
-     * Builds the dependencies from type-value pairs: {@code Path.class, path, Config.class, config, ...}. A null value
-     * registers nothing; the typed {@code of} overloads are the usual way in, this constructor is the unchecked one.
-     *
-     * @param input the pairs, an even number of elements
-     * @throws IllegalArgumentException on an odd length, a key that is not a {@code Class}, or a value that is not an
-     *     instance of its key
-     * @throws IllegalStateException on a type given twice
-     */
-    public Dependencies(Object... input) {
-        if ((input.length & 1) != 0) { // implicit null check
-            throw new IllegalArgumentException("length is odd");
-        }
-        Map<Class<?>, Object> buildingMap = new HashMap<>();
-        for (int i = 0; i < input.length; i += 2) {
-            final Object k = input[i];
-            if (!Class.class.isInstance(k)) {
-                throw new IllegalArgumentException(String.format("%s is not of type Class<?>", k));
-            }
-            final Object v = input[i + 1];
-            // we technically allow nulls for a value but skip registering them
-            if (v != null) {
-                register(buildingMap, Map.entry((Class<?>) k, v));
-            }
-        }
-        this.map = Map.copyOf(buildingMap);
+    private Dependencies(Map<Class<?>, Object> map) {
+        this.map = map;
     }
 
     /**
@@ -54,7 +29,7 @@ public final class Dependencies {
      * @return the empty dependencies
      */
     public static Dependencies of() {
-        return new Dependencies();
+        return NONE;
     }
 
     /**
@@ -66,7 +41,7 @@ public final class Dependencies {
      * @return the dependencies
      */
     public static <T1> Dependencies of(Class<T1> k1, T1 v1) {
-        return new Dependencies(k1, v1);
+        return fromPairs(k1, v1);
     }
 
     /**
@@ -81,7 +56,7 @@ public final class Dependencies {
      * @return the dependencies
      */
     public static <T1, T2> Dependencies of(Class<T1> k1, T1 v1, Class<T2> k2, T2 v2) {
-        return new Dependencies(k1, v1, k2, v2);
+        return fromPairs(k1, v1, k2, v2);
     }
 
     /**
@@ -99,7 +74,7 @@ public final class Dependencies {
      * @return the dependencies
      */
     public static <T1, T2, T3> Dependencies of(Class<T1> k1, T1 v1, Class<T2> k2, T2 v2, Class<T3> k3, T3 v3) {
-        return new Dependencies(k1, v1, k2, v2, k3, v3);
+        return fromPairs(k1, v1, k2, v2, k3, v3);
     }
 
     /**
@@ -121,7 +96,7 @@ public final class Dependencies {
      */
     public static <T1, T2, T3, T4> Dependencies of(
             Class<T1> k1, T1 v1, Class<T2> k2, T2 v2, Class<T3> k3, T3 v3, Class<T4> k4, T4 v4) {
-        return new Dependencies(k1, v1, k2, v2, k3, v3, k4, v4);
+        return fromPairs(k1, v1, k2, v2, k3, v3, k4, v4);
     }
 
     /**
@@ -146,18 +121,22 @@ public final class Dependencies {
      */
     public static <T1, T2, T3, T4, T5> Dependencies of(
             Class<T1> k1, T1 v1, Class<T2> k2, T2 v2, Class<T3> k3, T3 v3, Class<T4> k4, T4 v4, Class<T5> k5, T5 v5) {
-        return new Dependencies(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5);
+        return fromPairs(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5);
     }
 
     /**
-     * Any number of dependencies as type-value pairs, unchecked by the compiler: the rules of
-     * {@link #Dependencies(Object...)}.
+     * Any number of dependencies as type-value pairs, {@code Path.class, path, Config.class, config, ...}, unchecked by
+     * the compiler: an even number of elements, each key a {@code Class}, each value an instance of its key, no type
+     * twice. The typed overloads are the usual way in.
      *
-     * @param objects the pairs, an even number of elements
+     * @param pairs the pairs, an even number of elements
      * @return the dependencies
+     * @throws IllegalArgumentException on an odd length, a key that is not a {@code Class}, a null value, or a value
+     *     that is not an instance of its key
+     * @throws IllegalStateException on a type given twice
      */
-    public static Dependencies of(Object... objects) {
-        return new Dependencies(objects);
+    public static Dependencies of(Object... pairs) {
+        return fromPairs(pairs);
     }
 
     /**
@@ -187,27 +166,53 @@ public final class Dependencies {
         return Optional.ofNullable(dependencyNullable(Objects.requireNonNull(dependencyClass)));
     }
 
-    private void register(Map<Class<?>, Object> buildingMap, Map.Entry<Class<?>, Object> entry) {
-        final Object value = entry.getValue();
-        if (!entry.getKey().isInstance(value)) {
-            throw new IllegalArgumentException("Value is not of type " + entry.getKey());
-        }
-        register(buildingMap, entry.getKey(), value);
+    /**
+     * Whether nothing was handed over; the loaders ask before warning that a direct registration received none of it.
+     */
+    boolean isEmpty() {
+        return map.isEmpty();
     }
 
-    private void register(Map<Class<?>, Object> buildingMap, Class<?> dependencyType, Object dependency) {
-        if (buildingMap.containsKey(dependencyType)) {
-            throw new IllegalStateException("Already registered: " + dependencyType);
+    private static Dependencies fromPairs(Object... pairs) {
+        if ((pairs.length & 1) != 0) { // implicit null check
+            throw new IllegalArgumentException("length is odd");
         }
-        buildingMap.put(dependencyType, dependency);
+        final Map<Class<?>, Object> map = new HashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            register(map, pairs[i], pairs[i + 1]);
+        }
+        return new Dependencies(Map.copyOf(map));
     }
 
+    private static void register(Map<Class<?>, Object> map, Object key, Object value) {
+        if (!(key instanceof Class<?> type)) {
+            throw new IllegalArgumentException(String.format("%s is not of type Class<?>", key));
+        }
+        if (value == null) {
+            // nothing could ever be asked for it: the mistake is at the call site, so it fails there
+            throw new IllegalArgumentException("Null value for " + type.getName());
+        }
+        if (!type.isInstance(value)) {
+            throw new IllegalArgumentException(
+                    "Value " + value.getClass().getName() + " is not of type " + type.getName());
+        }
+        if (map.containsKey(type)) {
+            throw new IllegalStateException("Already registered: " + type);
+        }
+        map.put(type, value);
+    }
+
+    @SuppressWarnings("unchecked") // the value was checked against its key at registration
     private <T> T dependencyNullable(Class<T> dependencyType) {
         return (T) map.get(Objects.requireNonNull(dependencyType));
     }
 
+    /** The types handed over, never the values: a value may be a credential, and this ends up in logs. */
     @Override
     public String toString() {
-        return String.valueOf(map);
+        return map.keySet().stream()
+                .map(Class::getName)
+                .sorted()
+                .collect(Collectors.joining(", ", "Dependencies[", "]"));
     }
 }

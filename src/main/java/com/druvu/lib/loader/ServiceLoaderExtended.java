@@ -3,11 +3,14 @@ package com.druvu.lib.loader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
- * The standard ServiceLoader with a predicate choosing the right candidates, and the cardinality rules of this library:
- * {@link #load} wants exactly one match and throws on a second, {@link #loadAll} takes every match.
+ * The cardinality rules of this library over the candidates a {@link java.util.ServiceLoader} yields: {@link #one}
+ * wants at most one match and throws on a second, {@link #all} takes every match. Iterating the candidates instantiates
+ * them, so a registration that cannot be instantiated throws the JDK's {@link java.util.ServiceConfigurationError} out
+ * of either method, as a deployment error should.
  *
  * @author Deniss Larka on 18 Jan 2025
  */
@@ -15,68 +18,63 @@ final class ServiceLoaderExtended {
 
     private ServiceLoaderExtended() {}
 
-    static <T> T load(Class<T> targetClass) {
-        return load(targetClass, (candidate) -> true);
+    /**
+     * The single candidate, empty when there is none.
+     *
+     * @throws IllegalStateException when there are two
+     */
+    static <T> Optional<T> one(Class<T> type, Iterable<T> candidates) {
+        return one(type, candidates, candidate -> true);
     }
 
     /**
-     * Load the single candidate matching the predicate. Throws if several match or none does.
+     * The single candidate matching the predicate, empty when none does.
      *
-     * @param targetClass the service type to load
-     * @param candidateChooser predicate to filter candidates
-     * @param <T> type of the service
-     * @return the single matching candidate
-     * @throws IllegalStateException if more than one matching candidate is found
-     * @throws TargetClassNotFoundException if no matching candidate is found
+     * @param type the service type, for the message
+     * @param candidates what the service loader yields
+     * @param chooser which candidates count
+     * @param <T> the service type
+     * @return the one match, or empty
+     * @throws IllegalStateException when two candidates match
      */
-    static <T> T load(Class<T> targetClass, Predicate<T> candidateChooser) {
-        Iterable<T> serviceLoader = ModuleServices.load(targetClass);
-        T goodCandidate = null;
-        for (T candidate : serviceLoader) {
-            if (!candidateChooser.test(candidate)) {
+    static <T> Optional<T> one(Class<T> type, Iterable<T> candidates, Predicate<? super T> chooser) {
+        T match = null;
+        for (T candidate : candidates) {
+            if (!chooser.test(candidate)) {
                 continue;
             }
-            if (goodCandidate != null) {
+            if (match != null) {
                 throw new IllegalStateException(String.format(
                         "More than one %s found: %n%s%n%s",
-                        shortName(targetClass), shortName(goodCandidate), shortName(candidate)));
+                        type.getSimpleName(),
+                        match.getClass().getName(),
+                        candidate.getClass().getName()));
             }
-            goodCandidate = candidate;
+            match = candidate;
         }
+        return Optional.ofNullable(match);
+    }
 
-        if (goodCandidate == null) {
-            throw new TargetClassNotFoundException("Candidate not found: " + targetClass);
-        }
-
-        return goodCandidate;
+    /** Every candidate, in the service loader's order; an unmodifiable list, empty when there is none. */
+    static <T> List<T> all(Iterable<T> candidates) {
+        return all(candidates, candidate -> true);
     }
 
     /**
-     * Load all candidates matching the predicate. Returns an empty list if none does.
+     * Every candidate matching the predicate, in the service loader's order.
      *
-     * @param targetClass the service type to load
-     * @param candidateChooser predicate to filter candidates
-     * @param <T> type of the service
-     * @return unmodifiable list of all matching candidates (empty if none found)
+     * @param candidates what the service loader yields
+     * @param chooser which candidates count
+     * @param <T> the service type
+     * @return an unmodifiable list, empty when none matches
      */
-    static <T> List<T> loadAll(Class<T> targetClass, Predicate<T> candidateChooser) {
-        Iterable<T> serviceLoader = ModuleServices.load(targetClass);
-        List<T> candidates = new ArrayList<>();
-        for (T candidate : serviceLoader) {
-            if (candidateChooser.test(candidate)) {
-                candidates.add(candidate);
+    static <T> List<T> all(Iterable<T> candidates, Predicate<? super T> chooser) {
+        List<T> matches = new ArrayList<>();
+        for (T candidate : candidates) {
+            if (chooser.test(candidate)) {
+                matches.add(candidate);
             }
         }
-        return Collections.unmodifiableList(candidates);
-    }
-
-    private static String shortName(Object object) {
-        if (object == null) {
-            return "NULL";
-        }
-        if (object instanceof Class type) {
-            return type.getSimpleName();
-        }
-        return shortName(object.getClass());
+        return Collections.unmodifiableList(matches);
     }
 }

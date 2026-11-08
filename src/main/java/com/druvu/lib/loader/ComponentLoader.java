@@ -1,9 +1,11 @@
 package com.druvu.lib.loader;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.ServiceConfigurationError;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
+import java.util.ServiceLoader;
 
 /**
  * Loads a single component instance, registered in one of two ways.
@@ -17,10 +19,11 @@ import java.util.function.Predicate;
  *
  * <h2>A direct registration, when no factory matches</h2>
  *
- * <p>An implementation registered under the requested type itself, as for a plain {@link java.util.ServiceLoader}: a
- * public class with a public no-arg constructor or, in an explicit module only (one with a {@code module-info}), a
- * class with a public static {@code provider()} method. Nothing on that side depends on this library, and nothing
- * receives the dependencies: the JDK constructs the object. Two registrations are an error here too.
+ * <p>An implementation registered under the requested type itself, as for a plain {@link ServiceLoader}: a public class
+ * with a public no-arg constructor or, in an explicit module only (one with a {@code module-info}), a class with a
+ * public static {@code provider()} method. Nothing on that side depends on this library, and nothing receives the
+ * dependencies: the JDK constructs the object, and dependencies handed over anyway are logged as a WARNING, since they
+ * are almost always a mistake. Two registrations are an error here too.
  *
  * <p>On the module path this module declares its use of the requested type at run time, so the registering module needs
  * its {@code provides} line and nothing of ours. Two conditions the JDK sets: the type is public in a package its
@@ -31,7 +34,7 @@ import java.util.function.Predicate;
  *
  * <h2>Thread safety</h2>
  *
- * <p>Load and dispose operations synchronize on the target class, making concurrent calls safe.
+ * <p>This loader keeps no state, so concurrent calls are safe; no lock is held while a factory runs.
  *
  * @author Deniss Larka
  * @see ComponentFactory
@@ -39,7 +42,7 @@ import java.util.function.Predicate;
  */
 public final class ComponentLoader {
 
-    private static final ConcurrentHashMap<Class<?>, Object> LOCKS = new ConcurrentHashMap<>();
+    private static final Logger LOG = System.getLogger(ComponentLoader.class.getName());
 
     private ComponentLoader() {}
 
@@ -49,8 +52,10 @@ public final class ComponentLoader {
      * @param targetClass the component type
      * @param <T> the component type
      * @return the component
-     * @throws TargetClassNotFoundException when neither a factory nor a direct registration exists for the type
+     * @throws TargetClassNotFoundException when no factory produces the type and no registration under it could be
+     *     loaded
      * @throws IllegalStateException when two factories or two direct registrations exist, or the factory created a null
+     * @throws ServiceConfigurationError when a registration exists but cannot be instantiated
      */
     public static <T> T load(final Class<T> targetClass) {
         return load(targetClass, Dependencies.of());
@@ -63,29 +68,25 @@ public final class ComponentLoader {
      * @param dependencies what the factory receives; a direct registration receives nothing
      * @param <T> the component type
      * @return the component
-     * @throws TargetClassNotFoundException when neither a factory nor a direct registration exists for the type
+     * @throws TargetClassNotFoundException when no factory produces the type and no registration under it could be
+     *     loaded
      * @throws IllegalStateException when two factories or two direct registrations exist, or the factory created a null
+     * @throws ServiceConfigurationError when a registration exists but cannot be instantiated
      */
     public static <T> T load(final Class<T> targetClass, Dependencies dependencies) {
-
         Objects.requireNonNull(targetClass);
         Objects.requireNonNull(dependencies);
 
-        synchronized (LOCKS.computeIfAbsent(targetClass, k -> new Object())) {
-            final ComponentFactory<T> componentFactory;
-            try {
-                componentFactory = findFactory(targetClass);
-            } catch (TargetClassNotFoundException noFactory) {
-                // Only the factory lookup is guarded: a TargetClassNotFoundException raised by the component's own
-                // construction is the component's failure, and must not be mistaken for a missing factory.
-                return loadDirectly(targetClass, noFactory);
-            }
-            final T result = componentFactory.createComponent(dependencies);
-            if (result == null) {
-                throw new IllegalStateException(String.format("Factory %s created a null", componentFactory));
-            }
-            return result;
+        final Optional<ComponentFactory<T>> found = findFactory(targetClass);
+        if (found.isEmpty()) {
+            return loadDirectly(targetClass, dependencies);
         }
+        final ComponentFactory<T> factory = found.get();
+        final T component = factory.createComponent(dependencies);
+        if (component == null) {
+            throw new IllegalStateException(String.format("Factory %s created a null", factory));
+        }
+        return component;
     }
 
     /**
@@ -96,45 +97,51 @@ public final class ComponentLoader {
      * @param instance the component
      * @param <T> the component type
      * @return what the factory returned, or the instance itself
+     * @throws IllegalStateException when two factories produce the type
      */
     public static <T> T dispose(Class<T> targetClass, T instance) {
-        try {
-            return findFactory(targetClass).disposeComponent(instance);
-        } catch (TargetClassNotFoundException e) {
-            return instance;
-        }
+        return findFactory(targetClass)
+                .map(factory -> factory.disposeComponent(instance))
+                .orElse(instance);
     }
 
-    private static <T> T loadDirectly(Class<T> targetClass, TargetClassNotFoundException noFactory) {
+    /** The one registration under the type itself, constructed by the JDK. */
+    private static <T> T loadDirectly(Class<T> targetClass, Dependencies dependencies) {
+        final ServiceLoader<T> registrations;
         try {
-            return ServiceLoaderExtended.load(targetClass);
-        } catch (TargetClassNotFoundException noRegistration) {
-            throw notFound(targetClass, noFactory);
-        } catch (ServiceConfigurationError e) {
-            // the JDK refused the lookup (a registration that cannot be instantiated, or on the module path a type this
-            // module cannot see): keep its reason, it is the one the caller needs
-            final TargetClassNotFoundException notFound = notFound(targetClass, noFactory);
-            notFound.addSuppressed(e);
+            registrations = ModuleServices.load(targetClass);
+        } catch (ServiceConfigurationError refused) {
+            // the JDK refuses the lookup itself: on the module path, a type this module cannot see. Its reason is the
+            // one the caller needs, so it travels along
+            final TargetClassNotFoundException notFound = notFound(targetClass);
+            notFound.addSuppressed(refused);
             throw notFound;
         }
-    }
-
-    private static TargetClassNotFoundException notFound(Class<?> targetClass, TargetClassNotFoundException noFactory) {
-        var notFound = new TargetClassNotFoundException(
-                "No ComponentFactory or ServiceLoader provider for %s".formatted(targetClass.getName()));
-        notFound.addSuppressed(noFactory);
-        return notFound;
-    }
-
-    private static <T> ComponentFactory<T> findFactory(Class<T> targetClass) {
-        final Predicate<ComponentFactory> producesTheType = factory -> targetClass == factory.type();
-        try {
-            return ServiceLoaderExtended.load(ComponentFactory.class, producesTheType);
-        } catch (TargetClassNotFoundException e) {
-            var notFound = new TargetClassNotFoundException(
-                    "ComponentFactory producing %s not found".formatted(targetClass.getName()));
-            notFound.addSuppressed(e);
-            throw notFound;
+        // a registration that cannot be instantiated throws the JDK's error out of here, as a deployment error should
+        final T component =
+                ServiceLoaderExtended.one(targetClass, registrations).orElseThrow(() -> notFound(targetClass));
+        if (!dependencies.isEmpty()) {
+            LOG.log(
+                    Level.WARNING,
+                    () -> targetClass.getName()
+                            + " is registered directly: the JDK constructed it, and the dependencies"
+                            + " handed over reached nothing: " + dependencies);
         }
+        return component;
+    }
+
+    private static TargetClassNotFoundException notFound(Class<?> targetClass) {
+        return new TargetClassNotFoundException(
+                "No ComponentFactory produces %s, and no registration under it could be loaded"
+                        .formatted(targetClass.getName()));
+    }
+
+    /** The factory producing the type, empty when none does; two are an error. */
+    @SuppressWarnings({"unchecked", "rawtypes"
+    }) // a factory whose type() is targetClass produces T: the contract of type()
+    private static <T> Optional<ComponentFactory<T>> findFactory(Class<T> targetClass) {
+        final Iterable<ComponentFactory> registered = ModuleServices.load(ComponentFactory.class);
+        return ServiceLoaderExtended.one(ComponentFactory.class, registered, factory -> targetClass == factory.type())
+                .map(factory -> (ComponentFactory<T>) factory);
     }
 }

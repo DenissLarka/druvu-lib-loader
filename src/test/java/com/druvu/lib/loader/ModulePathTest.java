@@ -54,7 +54,7 @@ public class ModulePathTest {
             assertThat(lines.get(4)).startsWith("duplicate refused: More than one");
             assertThat(lines.get(5))
                     .isEqualTo(
-                            "hidden refused: No ComponentFactory or ServiceLoader provider for com.myapp.internal.Hidden");
+                            "hidden refused: No ComponentFactory produces com.myapp.internal.Hidden, and no registration under it could be loaded");
             assertThat(lines)
                     .anySatisfy(line -> assertThat(line)
                             .startsWith("  because: java.util.ServiceConfigurationError")

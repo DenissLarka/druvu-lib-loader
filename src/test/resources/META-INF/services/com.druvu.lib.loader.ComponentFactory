@@ -5,3 +5,5 @@ com.druvu.lib.loader.TestPluginFactoryC
 com.druvu.lib.loader.FragilePlugin$SoundFactory
 com.druvu.lib.loader.FragilePlugin$ExplodingFactory
 com.druvu.lib.loader.NullComponentFactory
+com.druvu.lib.loader.HalfLoaded$SoundFactory
+com.druvu.lib.loader.HalfLoaded$NullFactory

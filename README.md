@@ -190,7 +190,8 @@ Need **all** implementations instead of exactly one — plugin style? Same patte
 An implementation can also be registered under the component interface itself, as for a plain
 `ServiceLoader`, with no `druvu-lib-loader` type anywhere on that side. The loaders consult such a
 registration when no `ComponentFactory` produces the requested type. The JDK constructs the object, so
-it receives no `Dependencies`: a public class with a public no-arg constructor.
+it receives no `Dependencies`: a public class with a public no-arg constructor. Dependencies handed over
+anyway are logged as a WARNING, since the component was constructed without them.
 
 ```java
 // Implementation module — no library dependency
@@ -287,7 +288,6 @@ every registered factory, and the caller hands each one the same argument.
 
 ### On the module path
 
-Direct registrations are found on the module path since 2.0.0 (1.x found them on the class path only).
 The library declares its `uses` of your type at run time, so no module of yours needs a `uses` line for
 the lookup itself. Two conditions the JDK sets:
 
@@ -342,6 +342,10 @@ MyComponent component = ComponentLoader.load(MyComponent.class,
 ComponentLoader.dispose(MyComponent.class, component);
 ```
 
+`TargetClassNotFoundException` means nothing is registered for the type (or, on the module path, nothing
+the library may see). A registration that exists but cannot be instantiated surfaces as the JDK's own
+`ServiceConfigurationError`, on either loader.
+
 ### MultiComponentLoader
 
 Loads **all** implementations of a component type — the plugin case. Every registered factory receives the same `Dependencies`; you get all the instances. Same discovery and argument-passing as `ComponentLoader`, opposite cardinality rule. When no factory produces the type, the implementations registered directly under it come back instead (see [Registering Under Your Own Type](#registering-under-your-own-type)).
@@ -357,8 +361,9 @@ List<Plugin> plugins = MultiComponentLoader.loadAll(Plugin.class, dependencies);
 MultiComponentLoader.disposeAll(Plugin.class, plugins);
 ```
 
-Loading is strict, disposing is not. `loadAll` fails the whole call if a factory creates a null or a
-direct registration cannot be instantiated — a half-loaded plugin set at startup is a deployment error
+Loading is strict, disposing is not. `loadAll` takes the set whole or not at all: if a factory fails or
+creates a null, or a direct registration cannot be instantiated, the components created before the failure
+go back to their factories and the error leaves — a half-loaded plugin set at startup is a deployment error
 worth seeing. `disposeAll` is the shutdown path, so it releases everything it can and logs a WARN for
 whatever it cannot: a component this loader never created (or already disposed), and a factory
 throwing on dispose. One failing plugin never leaves the others un-released.
@@ -388,6 +393,10 @@ Path path = dependencies.getDependency(Path.class);
 Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 ```
 
+The key is the exact type given: a supertype or an implemented interface finds nothing, so register under
+the type the factory asks for (`Dependencies.of(Config.class, fileConfig)` keys the value by `Config`). A
+null value is refused where it is written: nothing could be asked for it later.
+
 ## When to Use Each Loader
 
 | Loader | Use Case | Behavior |
@@ -397,10 +406,11 @@ Optional<Config> config = dependencies.getOptionalDependency(Config.class);
 
 ## Design Principles
 
-- **Thread Safety**: All loaders synchronize on the target class
-- **Fail Fast**: Throws exceptions for missing factories or duplicate registrations
-- **Type Safety**: Generic API type-checks dependency key/value pairs at compile time; which dependencies a factory requires is resolved (and validated) at runtime
+- **Thread safety**: `ComponentLoader` keeps no state; `MultiComponentLoader`'s only state is a synchronized map of who created what. No lock is held while your factory runs.
+- **Fail fast**: a missing registration, two registrations for one type, a null dependency or a half-loaded plugin set is an error where it happens
+- **Type safety**: the generic API type-checks dependency key/value pairs at compile time; which dependencies a factory requires is resolved (and validated) at runtime
 - **Immutability**: `Dependencies` are immutable after construction
+- **One registry**: every factory is registered under `ComponentFactory`, so a load instantiates all of them (they are stateless and cheap), and a factory that cannot be instantiated breaks every load, whatever type it produces — a deployment error you see at the first load
 
 ## Installation
 
@@ -441,22 +451,6 @@ If your project uses the Java Platform Module System, add to your `module-info.j
 ```java
 requires com.druvu.lib.loader;
 ```
-
-Note: in releases prior to 1.1.0 the module name was `druvu.lib.loader`.
-
-### Upgrading from 1.x
-
-2.0.0 removes what carried no weight. A factory compiled against 1.x runs unchanged; it also compiles
-unchanged unless it overrode `get()`.
-
-- `ComponentFactory` no longer extends `ServiceLoader.Provider`: `get()` is gone, `type()` and
-  `createComponent` stay.
-- A `ServiceLoader.Provider` registered under the JDK's `java.util.ServiceLoader.Provider` type is no
-  longer consulted: register a `ComponentFactory`, or the implementation under its own type.
-- `SingletonLoader` is gone: `ComponentLoader.load` already loads exactly one; keep the instance yourself.
-- A direct registration is strict now: two implementations under one type are an error (1.x took the
-  first), and `MultiComponentLoader.loadAll` returns them all.
-- Direct registrations are found on the module path, with the two conditions above.
 
 ## Feedback
 

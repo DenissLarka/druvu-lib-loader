@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Path;
+import java.util.ServiceConfigurationError;
 import org.testng.annotations.Test;
 
 /** ComponentLoader on the class path: a factory, a direct registration, and what each refuses. */
@@ -53,9 +54,7 @@ public class ComponentLoaderTest {
     public void testLoad_WhenNothingIsRegistered_ThrowsTargetClassNotFound() {
         assertThatThrownBy(() -> ComponentLoader.load(Integer.class))
                 .isInstanceOf(TargetClassNotFoundException.class)
-                .hasMessageContaining(Integer.class.getName())
-                // the factory lookup's own reason travels along
-                .satisfies(e -> assertThat(e.getSuppressed()).hasSize(1));
+                .hasMessageContaining(Integer.class.getName());
     }
 
     @Test
@@ -88,5 +87,28 @@ public class ComponentLoaderTest {
         DirectPlugin plugin = ComponentLoader.load(DirectPlugin.class);
 
         assertThat(ComponentLoader.dispose(DirectPlugin.class, plugin)).isSameAs(plugin);
+    }
+
+    @Test
+    public void testLoad_WithABrokenDirectRegistration_ThrowsTheJdkError() {
+        // the registration exists but cannot be instantiated: a deployment error, reported as the JDK's own, not as
+        // "not found"
+        assertThatThrownBy(() -> ComponentLoader.load(BrokenDirect.class))
+                .isInstanceOf(ServiceConfigurationError.class)
+                .hasMessageContaining("could not be instantiated");
+    }
+
+    @Test
+    public void testLoad_WithADirectRegistration_WarnsWhenDependenciesAreHandedOver() {
+        // the JDK constructs a direct registration, so dependencies handed over reach nothing: almost always a mistake
+        try (LogCapture log = new LogCapture(ComponentLoader.class)) {
+            ComponentLoader.load(DirectPlugin.class, Dependencies.of(String.class, "goes nowhere"));
+
+            assertThat(log.warnings())
+                    .singleElement()
+                    .asString()
+                    .contains(DirectPlugin.class.getName())
+                    .contains(String.class.getName());
+        }
     }
 }
